@@ -61,11 +61,12 @@ const INDIAN_STATES = [
   "West Bengal",
   "Delhi",
   "Jammu & Kashmir",
-  "Ladakh",
 ];
 
 const EMAIL_TO_COLLEGE: Record<string, string> = {
-  "rgipt.ac.in": "RGIPT",
+
+  // IITs
+  "rgipt.ac.in": "RGIPT/IIT JAIS",
   "iitd.ac.in": "IIT Delhi",
   "iitb.ac.in": "IIT Bombay",
   "iitm.ac.in": "IIT Madras",
@@ -89,6 +90,8 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
   "iitgoa.ac.in": "IIT Goa",
   "iitjammu.ac.in": "IIT Jammu",
   "iitdh.ac.in": "IIT Dharwad",
+
+  //NITS
   "nitt.edu": "NIT Trichy",
   "nitk.ac.in": "NIT Surathkal",
   "nitw.ac.in": "NIT Warangal",
@@ -108,34 +111,78 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
   "nits.ac.in": "NIT Silchar",
   "nith.ac.in": "NIT Hamirpur",
   "nita.ac.in": "NIT Agartala",
-  "iiita.ac.in": "IIIT Allahabad",
-  "iiitm.ac.in": "IIITM Gwalior",
+
+  //IITS
   "iiit.ac.in": "IIIT Hyderabad",
   "iiitb.ac.in": "IIIT Bangalore",
   "iiitd.ac.in": "IIIT Delhi",
-  "bits-pilani.ac.in": "BITS Pilani",
-  "dtu.ac.in": "DTU Delhi",
-  "nsut.ac.in": "NSUT Delhi", // -------- TOP PRIVATE COLLEGES (INDIA) --------
+  "iiita.ac.in": "IIIT Allahabad",
+  "iiitm.ac.in": "IIITM Gwalior",
+  "iiitdmj.ac.in": "IIITDM Jabalpur",
+  "iiitdm.ac.in": "IIITDM Kancheepuram",
+  "iiitk.ac.in": "IIIT Kurnool",
+  "iiits.ac.in": "IIIT Sri City",
+  "iiitvadodara.ac.in": "IIIT Vadodara",
+  "iiitn.ac.in": "IIIT Nagpur",
+  "iiitl.ac.in": "IIIT Lucknow",
+  "iiitdwd.ac.in": "IIIT Dharwad",
+  "iiitpune.ac.in": "IIIT Pune",
+  "iiitbh.ac.in": "IIIT Bhagalpur",
+  "iiitbhopal.ac.in": "IIIT Bhopal",
+  "iiitsurat.ac.in": "IIIT Surat",
+  "iiitu.ac.in": "IIIT Una",
+  "iiitkottayam.ac.in": "IIIT Kottayam",
+  "iiitranchi.ac.in": "IIIT Ranchi",
+  "iiitkota.ac.in": "IIIT Kota",
+  "iiitg.ac.in": "IIIT Guwahati",
+  "iiitsonepat.ac.in": "IIIT Sonepat",
+  "iiitmanipur.ac.in": "IIIT Manipur",
+  "iiitkalyani.ac.in": "IIIT Kalyani",
+  "iiitt.ac.in": "IIIT Tiruchirappalli",
+  "iiitr.ac.in": "IIIT Raichur",
+  "iiitagartala.ac.in": "IIIT Agartala"
+  
+  //IISERS
+  
+  "iiserkol.ac.in": "IISER Kolkata",
+  "iiserpune.ac.in": "IISER Pune",
+  "iiserb.ac.in": "IISER Bhopal",
+  "iisermohali.ac.in": "IISER Mohali",
+  "iisertvm.ac.in": "IISER Thiruvananthapuram",
+  "iisertirupati.ac.in": "IISER Tirupati",
+  "iiserberhampur.ac.in": "IISER Berhampur"
 
+
+  "bits-pilani.ac.in": "BITS Pilani",//bits
+
+  "dtu.ac.in": "DTU Delhi",
+
+  "nsut.ac.in": "NSUT Delhi", // -------- TOP PRIVATE COLLEGES (INDIA) --------
+  
   "vit.ac.in": "VIT Vellore",
+
   "vitstudent.ac.in": "VIT Vellore",
 
   "srmist.edu.in": "SRM Institute of Science and Technology",
+
   "srm.edu.in": "SRM University",
 
   "amity.edu": "Amity University",
 
   "manipal.edu": "Manipal Institute of Technology",
+
   "learner.manipal.edu": "Manipal University",
 
-  "shivnadaredu.com": "Shiv Nadar University",
+  "shivnadaredu.com": "Shiv Nadar University"
+  ,
   "snu.edu.in": "Shiv Nadar University",
 
   "ashoka.edu.in": "Ashoka University",
 
   "flame.edu.in": "FLAME University",
 
-  "opju.ac.in": "OP Jindal Global University",
+  "opju.ac.in": "OP Jindal Global University"
+  ,
   "jgu.edu.in": "Jindal Global University",
 
   "nmims.edu": "NMIMS Mumbai",
@@ -143,6 +190,7 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
   "christuniversity.in": "Christ University",
 
   "symbiosis.ac.in": "Symbiosis International University",
+
   "siu.edu.in": "Symbiosis University",
 
   "mitwpu.edu.in": "MIT World Peace University",
