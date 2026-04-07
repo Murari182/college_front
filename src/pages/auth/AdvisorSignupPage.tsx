@@ -66,7 +66,7 @@ const INDIAN_STATES = [
 const EMAIL_TO_COLLEGE: Record<string, string> = {
 
   // IITs
-  "rgipt.ac.in": "RGIPT/IIT JAIS",
+  "rgipt.ac.in": "RAJIV GANDHI INSTITUTE OF PETROLEUM TECHNOLOGY(RGIPT)",
   "iitd.ac.in": "IIT Delhi",
   "iitb.ac.in": "IIT Bombay",
   "iitm.ac.in": "IIT Madras",
@@ -113,7 +113,7 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
   "nita.ac.in": "NIT Agartala",
 
   //IITS
-  "iiit.ac.in": "IIIT Hyderabad",
+  "iiith.ac.in": "IIIT Hyderabad",
   "iiitb.ac.in": "IIIT Bangalore",
   "iiitd.ac.in": "IIIT Delhi",
   "iiita.ac.in": "IIIT Allahabad",
