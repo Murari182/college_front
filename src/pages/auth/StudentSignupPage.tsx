@@ -1,8 +1,10 @@
 import { LanguageMultiSelect } from "@/components/signup/LanguageMultiSelect";
+import { CollegeIdImageUploadBox } from "@/components/CollegeIdImageUploadBox";
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
 import { OTHER_LANGUAGE_LABEL } from "@/constants/signupLanguages";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { extractStudentFieldsFromIdCard } from "@/lib/idCardOcr";
 import {
   formatFirebaseAuthError,
 } from "@/lib/firebaseAuthErrors";
@@ -12,7 +14,8 @@ import { studentPostAuthPath } from "@/lib/studentPostAuthGate";
 import {
   registerStudent,
   requestSignupOtp,
-  uploadProfilePictureToS3,
+  uploadCollegeIdPairToS3,
+  uploadCollegeIdPairToS3Temp,
   verifySignupOtp,
 } from "@/lib/restApi";
 import { FirebaseError } from "firebase/app";
@@ -24,8 +27,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { CheckCircle, Loader, Mail, Upload, UserPlus, X } from "lucide-react";
-import { type ChangeEvent, useEffect, useReducer, useRef, useState } from "react";
+import { CheckCircle, Loader, Mail, UserPlus } from "lucide-react";
+import { type ChangeEvent, useEffect, useReducer, useState } from "react";
 import { AuthShell } from "./AuthShell";
 
 const INDIAN_STATES = [
@@ -62,6 +65,32 @@ const INDIAN_STATES = [
   "Ladakh",
 ];
 
+type StudentSignupDraft = {
+  name: string;
+  email: string;
+  phone: string;
+  upiId: string;
+  gender: string;
+  state: string;
+  academicStatus: string;
+  jeeMainsPercentile: string;
+  jeeMainsRank: string;
+  jeeAdvancedRank: string;
+  languages: string[];
+  languageOther: string;
+  idFrontPreview: string | null;
+  idFrontFile: File | null;
+  idBackPreview: string | null;
+  idBackFile: File | null;
+  idUploadToken: string;
+  dateOfBirth: string;
+  referralCode: string;
+  acceptedPolicies: boolean;
+  signupStep: 1 | 2;
+};
+
+let studentSignupDraft: StudentSignupDraft | null = null;
+
 export default function StudentSignupPage() {
   const navigate = useNavigate();
   const [, bump] = useReducer((x: number) => x + 1, 0);
@@ -78,9 +107,14 @@ export default function StudentSignupPage() {
   const [jeeAdvancedRank, setJeeAdvancedRank] = useState("");
   const [languages, setLanguages] = useState<string[]>([]);
   const [languageOther, setLanguageOther] = useState("");
-  const [profilePicPreview, setProfilePicPreview] = useState<string | null>(null);
-  const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
-  const profilePicInputRef = useRef<HTMLInputElement>(null);
+  const [idFrontPreview, setIdFrontPreview] = useState<string | null>(null);
+  const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
+  const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
+  const [idBackFile, setIdBackFile] = useState<File | null>(null);
+  const [idUploadToken, setIdUploadToken] = useState("");
+  const [uploadingIdToS3, setUploadingIdToS3] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [extractingIdDetails, setExtractingIdDetails] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [signupOtpSent, setSignupOtpSent] = useState(false);
@@ -98,12 +132,169 @@ export default function StudentSignupPage() {
   }, []);
 
   useEffect(() => {
+    if (!studentSignupDraft) return;
+    const draft = studentSignupDraft;
+    setName(draft.name);
+    setEmail(draft.email);
+    setPhone(draft.phone);
+    setUpiId(draft.upiId);
+    setGender(draft.gender);
+    setState(draft.state);
+    setAcademicStatus(draft.academicStatus);
+    setJeeMainsPercentile(draft.jeeMainsPercentile);
+    setJeeMainsRank(draft.jeeMainsRank);
+    setJeeAdvancedRank(draft.jeeAdvancedRank);
+    setLanguages(draft.languages);
+    setLanguageOther(draft.languageOther);
+    setIdFrontPreview(draft.idFrontPreview);
+    setIdFrontFile(draft.idFrontFile);
+    setIdBackPreview(draft.idBackPreview);
+    setIdBackFile(draft.idBackFile);
+    setIdUploadToken(draft.idUploadToken);
+    setDateOfBirth(draft.dateOfBirth);
+    setReferralCode(draft.referralCode);
+    setAcceptedPolicies(draft.acceptedPolicies);
+    setSignupStep(draft.signupStep);
+  }, []);
+
+  useEffect(() => {
     const u = authUser?.email;
     if (!u) return;
     setEmail(u);
   }, [authUser]);
 
   useEmailVerificationSync(authUser, setAuthUser, bump);
+
+  useEffect(() => {
+    studentSignupDraft = {
+      name,
+      email,
+      phone,
+      upiId,
+      gender,
+      state,
+      academicStatus,
+      jeeMainsPercentile,
+      jeeMainsRank,
+      jeeAdvancedRank,
+      languages,
+      languageOther,
+      idFrontPreview,
+      idFrontFile,
+      idBackPreview,
+      idBackFile,
+      idUploadToken,
+      dateOfBirth,
+      referralCode,
+      acceptedPolicies,
+      signupStep,
+    };
+  }, [
+    name,
+    email,
+    phone,
+    upiId,
+    gender,
+    state,
+    academicStatus,
+    jeeMainsPercentile,
+    jeeMainsRank,
+    jeeAdvancedRank,
+    languages,
+    languageOther,
+    idFrontPreview,
+    idFrontFile,
+    idBackPreview,
+    idBackFile,
+    idUploadToken,
+    dateOfBirth,
+    referralCode,
+    acceptedPolicies,
+    signupStep,
+  ]);
+
+  const handleStudentIdUpload = (side: "front" | "back", file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("College ID image must be under 5MB.");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    if (side === "front") {
+      if (idFrontPreview?.startsWith("blob:")) URL.revokeObjectURL(idFrontPreview);
+      setIdFrontPreview(objectUrl);
+      setIdFrontFile(file);
+      setIdUploadToken("");
+      return;
+    }
+    if (idBackPreview?.startsWith("blob:")) URL.revokeObjectURL(idBackPreview);
+    setIdBackPreview(objectUrl);
+    setIdBackFile(file);
+    setIdUploadToken("");
+  };
+
+  useEffect(() => {
+    if (!idFrontFile || !idBackFile) return;
+    if (idUploadToken) return;
+    let cancelled = false;
+
+    const runTempUpload = async () => {
+      setUploadingIdToS3(true);
+      try {
+        const uploaded = await uploadCollegeIdPairToS3Temp("student", idFrontFile, idBackFile);
+        if (!cancelled) setIdUploadToken(uploaded.tempUploadToken);
+      } catch {
+        if (!cancelled) {
+          alert("Could not pre-upload ID images yet. We will upload during final submit.");
+        }
+      } finally {
+        if (!cancelled) setUploadingIdToS3(false);
+      }
+    };
+
+    void runTempUpload();
+    return () => {
+      cancelled = true;
+    };
+  }, [idFrontFile, idBackFile, idUploadToken]);
+
+  useEffect(() => {
+    if (!idFrontFile || !idBackFile) return;
+    let cancelled = false;
+
+    const runExtraction = async () => {
+      setExtractingIdDetails(true);
+      try {
+        const extracted = await extractStudentFieldsFromIdCard(
+          idFrontFile,
+          idBackFile,
+          INDIAN_STATES,
+        );
+        if (cancelled) return;
+
+        if (extracted.fullName && !name.trim()) setName(extracted.fullName);
+        if (extracted.email && !email.trim()) setEmail(extracted.email);
+        if (extracted.mobileNumber && !phone.trim()) setPhone(extracted.mobileNumber);
+        if (extracted.gender && !gender) setGender(extracted.gender);
+        if (extracted.state && !state) setState(extracted.state);
+        if (extracted.dateOfBirth && !dateOfBirth.trim()) setDateOfBirth(extracted.dateOfBirth);
+      } catch {
+        if (!cancelled) {
+          alert("Could not auto-extract all details from the ID. Please fill fields manually where needed.");
+        }
+      } finally {
+        if (!cancelled) setExtractingIdDetails(false);
+      }
+    };
+
+    void runExtraction();
+    return () => {
+      cancelled = true;
+    };
+  }, [idFrontFile, idBackFile]);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value;
@@ -226,31 +417,11 @@ export default function StudentSignupPage() {
     setSignupOtp("");
   };
 
-  const clearProfilePicture = () => {
-    if (profilePicPreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(profilePicPreview);
-    }
-    setProfilePicPreview(null);
-    setProfilePicFile(null);
-  };
-
-  const handleProfilePicUpload = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Profile image must be under 5MB.");
-      return;
-    }
-    if (profilePicPreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(profilePicPreview);
-    }
-    setProfilePicPreview(URL.createObjectURL(file));
-    setProfilePicFile(file);
-  };
-
   const handleNextStep = () => {
+    if (!idFrontFile || !idBackFile) {
+      alert("Please upload both sides of your ID card first.");
+      return;
+    }
     if (!name || !email || !phone || !upiId.trim() || !gender || !state) {
       alert("Please complete all required personal details before continuing.");
       return;
@@ -289,6 +460,10 @@ export default function StudentSignupPage() {
     const u = auth.currentUser;
     if (!u) {
       alert("Send the verification code, enter it, and sign in before creating your profile.");
+      return;
+    }
+    if (!idFrontFile || !idBackFile) {
+      alert("Please upload both sides of your ID card first.");
       return;
     }
     await reload(u);
@@ -331,9 +506,17 @@ export default function StudentSignupPage() {
       }
       const token = await after.getIdToken(true);
 
-      let profilePictureKey: string | undefined;
-      if (profilePicFile) {
-        profilePictureKey = await uploadProfilePictureToS3(token, "student", profilePicFile);
+      let collegeIdFrontKey: string | undefined;
+      let collegeIdBackKey: string | undefined;
+      if (!idUploadToken) {
+        const uploaded = await uploadCollegeIdPairToS3(
+          token,
+          "student",
+          idFrontFile,
+          idBackFile,
+        );
+        collegeIdFrontKey = uploaded.collegeIdFrontKey;
+        collegeIdBackKey = uploaded.collegeIdBackKey;
       }
 
       const payload: Record<string, unknown> = {
@@ -352,10 +535,17 @@ export default function StudentSignupPage() {
       if (adv) payload.jeeAdvancedRank = adv;
       const lo = languageOther.trim();
       if (lo) payload.languageOther = lo;
-      if (profilePictureKey) payload.profilePicture = profilePictureKey;
+      if (dateOfBirth.trim()) payload.dateOfBirth = dateOfBirth.trim();
+      if (idUploadToken) {
+        payload.idUploadToken = idUploadToken;
+      } else {
+        payload.collegeIdFrontKey = collegeIdFrontKey;
+        payload.collegeIdBackKey = collegeIdBackKey;
+      }
       if (referralCode.trim()) payload.referralCode = referralCode.trim();
 
       const saved = await registerStudent(token, payload);
+      studentSignupDraft = null;
       const afterSignup = studentPostAuthPath();
       if (afterSignup === "/student/dashboard") {
         navigate({
@@ -392,6 +582,49 @@ export default function StudentSignupPage() {
         </div>
 
         <div className={signupStep === 1 ? "flex flex-col gap-4" : "hidden"}>
+        <div className="border border-border/60 rounded-xl bg-background/20 p-3">
+          <p className="text-sm font-semibold text-foreground mb-1">
+            Student ID Card Upload <span className="text-neon-teal">*</span>
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Upload front and back first. We auto-fill personal details from your ID; you can edit any field.
+          </p>
+          <div className="flex gap-3">
+            <CollegeIdImageUploadBox
+              variant="teal"
+              label="Front Side"
+              preview={idFrontPreview}
+              onUpload={(file) => handleStudentIdUpload("front", file)}
+              onRemove={() => {
+                if (idFrontPreview?.startsWith("blob:")) URL.revokeObjectURL(idFrontPreview);
+                setIdFrontPreview(null);
+                setIdFrontFile(null);
+                setIdUploadToken("");
+              }}
+            />
+            <CollegeIdImageUploadBox
+              variant="teal"
+              label="Back Side"
+              preview={idBackPreview}
+              onUpload={(file) => handleStudentIdUpload("back", file)}
+              onRemove={() => {
+                if (idBackPreview?.startsWith("blob:")) URL.revokeObjectURL(idBackPreview);
+                setIdBackPreview(null);
+                setIdBackFile(null);
+                setIdUploadToken("");
+              }}
+            />
+          </div>
+          {extractingIdDetails ? (
+            <p className="text-xs text-neon-teal mt-2">Extracting details from ID card...</p>
+          ) : null}
+          {uploadingIdToS3 ? (
+            <p className="text-xs text-neon-teal mt-1">Securing ID upload...</p>
+          ) : idUploadToken ? (
+            <p className="text-xs text-green-500 mt-1">ID uploaded securely (temporary).</p>
+          ) : null}
+        </div>
+
         <div className="rounded-xl border border-border/60 bg-background/30 px-3 py-3 space-y-2">
           <label
             htmlFor="student-signup-referral"
@@ -430,42 +663,6 @@ export default function StudentSignupPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal transition-colors"
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm text-muted-foreground">
-            Profile picture <span className="text-xs">(optional)</span>
-          </label>
-          {profilePicPreview ? (
-            <div className="relative w-24 h-24 rounded-full overflow-hidden border border-neon-teal/40">
-              <img src={profilePicPreview} alt="Profile preview" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => clearProfilePicture()}
-                className="absolute -top-1 -right-1 bg-black/70 rounded-full p-1 text-white"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => profilePicInputRef.current?.click()}
-              className="h-24 w-24 rounded-full border-2 border-dashed border-border hover:border-neon-teal text-muted-foreground hover:text-neon-teal flex items-center justify-center transition-colors"
-            >
-              <Upload size={18} />
-            </button>
-          )}
-          <input
-            ref={profilePicInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleProfilePicUpload(file);
-            }}
           />
         </div>
 
@@ -628,6 +825,23 @@ export default function StudentSignupPage() {
             </div>
           </div>
         )}
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="student-signup-dob"
+            className="text-sm text-muted-foreground"
+          >
+            Date of birth <span className="text-xs">(optional)</span>
+          </label>
+          <input
+            id="student-signup-dob"
+            type="text"
+            placeholder="DD/MM/YYYY"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            className="bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal transition-colors"
+          />
+        </div>
 
         <div className="flex flex-col gap-1">
           <label
@@ -823,15 +1037,15 @@ export default function StudentSignupPage() {
             />
             <span>
               I accept the{" "}
-              <Link to="/terms" className="text-neon-teal hover:underline">
+              <Link to="/terms" target="_blank" rel="noreferrer" className="text-neon-teal hover:underline">
                 Terms
               </Link>
               {", "}
-              <Link to="/about" className="text-neon-teal hover:underline">
+              <Link to="/about" target="_blank" rel="noreferrer" className="text-neon-teal hover:underline">
                 About
               </Link>
               {" and "}
-              <Link to="/privacy" className="text-neon-teal hover:underline">
+              <Link to="/privacy" target="_blank" rel="noreferrer" className="text-neon-teal hover:underline">
                 Privacy Policy
               </Link>
               .

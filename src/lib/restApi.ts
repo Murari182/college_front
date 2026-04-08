@@ -542,6 +542,70 @@ export async function uploadCollegeIdPairToS3(
   return { collegeIdFrontKey: f, collegeIdBackKey: b };
 }
 
+type TempCollegeIdPairPresignResponse = {
+  tempUploadToken: string;
+  front: { uploadUrl: string; key: string; bucket: string };
+  back: { uploadUrl: string; key: string; bucket: string };
+};
+
+export async function uploadCollegeIdPairToS3Temp(
+  role: "advisor" | "student",
+  frontFile: File,
+  backFile: File,
+): Promise<{ tempUploadToken: string; collegeIdFrontKey: string; collegeIdBackKey: string }> {
+  const form = new FormData();
+  form.append("role", role);
+  form.append("front_file", frontFile);
+  form.append("back_file", backFile);
+
+  const directRes = await fetch(url("/api/upload/college-id/temp/upload"), {
+    method: "POST",
+    body: form,
+  });
+  if (directRes.ok) {
+    const direct = await parseJsonOrThrow<TempCollegeIdPairPresignResponse>(directRes);
+    return {
+      tempUploadToken: direct.tempUploadToken,
+      collegeIdFrontKey: direct.front.key,
+      collegeIdBackKey: direct.back.key,
+    };
+  }
+
+  const directErr = await parseErrorMessage(directRes);
+  if (directRes.status === 503 && /not configured/i.test(directErr)) {
+    // Local/dev mode without S3: skip pre-upload and continue signup flow.
+    return { tempUploadToken: "", collegeIdFrontKey: "", collegeIdBackKey: "" };
+  }
+
+  const presignRes = await fetch(url("/api/upload/college-id/temp/presign"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      role,
+      frontContentType: frontFile.type,
+      backContentType: backFile.type,
+    }),
+  });
+  if (!presignRes.ok) {
+    const presignErr = await parseErrorMessage(presignRes);
+    if (presignRes.status === 503 && /not configured/i.test(presignErr)) {
+      return { tempUploadToken: "", collegeIdFrontKey: "", collegeIdBackKey: "" };
+    }
+    throw new Error(presignErr);
+  }
+  const presigned = await parseJsonOrThrow<TempCollegeIdPairPresignResponse>(presignRes);
+  const [frontPut, backPut] = await Promise.all([
+    fetch(presigned.front.uploadUrl, { method: "PUT", body: frontFile }),
+    fetch(presigned.back.uploadUrl, { method: "PUT", body: backFile }),
+  ]);
+  if (!frontPut.ok || !backPut.ok) throw new Error("Could not upload temporary ID images to S3.");
+  return {
+    tempUploadToken: presigned.tempUploadToken,
+    collegeIdFrontKey: presigned.front.key,
+    collegeIdBackKey: presigned.back.key,
+  };
+}
+
 export async function uploadProfilePictureToS3(
   firebaseIdToken: string,
   role: "advisor" | "student",
