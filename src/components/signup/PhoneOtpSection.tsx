@@ -8,8 +8,11 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
-import { REGEXP_ONLY_DIGITS } from "input-otp";
+
 import { Loader, Smartphone } from "lucide-react";
+
+/** Digit-only HTML `pattern` for OTP input (matches `input-otp` REGEXP_ONLY_DIGITS string form). */
+const REGEXP_ONLY_DIGITS = "^[0-9]*$";
 
 type Variant = "teal" | "orange";
 

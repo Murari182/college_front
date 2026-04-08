@@ -30,6 +30,11 @@ const PUBLIC: Record<string, RouteSeo> = {
     description:
       "Join Collegeconnects as a student or advisor. Sign up to book mentoring sessions or offer guidance from your campus.",
   },
+  "/college-predictor": {
+    title: `College Predictor | ${SITE_NAME}`,
+    description:
+      "How to use the college predictor and quick links to JoSAA cutoff data in Google Sheets for 2024 and 2025.",
+  },
   "/about": {
     title: `About | ${SITE_NAME}`,
     description: `Learn about ${SITE_NAME}, our mission, and how we connect students with verified college advisors.`,

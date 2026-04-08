@@ -6,10 +6,11 @@ import { useEffect, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { BrandLogo } from "@/components/BrandLogo";
 
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Why Us", href: "#why-us" },
+const navLinks: { label: string; href: string; isHash: boolean }[] = [
+  { label: "Home", href: "/", isHash: false },
+  { label: "How It Works", href: "#how-it-works", isHash: true },
+  { label: "Why Us", href: "#why-us", isHash: true },
+  { label: "College Predictor", href: "/college-predictor", isHash: false },
 ];
 
 export default function Navbar() {
@@ -70,17 +71,28 @@ export default function Navbar() {
         {/* Desktop Nav */}
         {showTopNav ? (
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <button
-                type="button"
-                key={link.href}
-                onClick={() => handleNavClick(link.href)}
-                className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-                data-ocid="nav.link"
-              >
-                {link.label}
-              </button>
-            ))}
+            {navLinks.map((link) =>
+              link.isHash ? (
+                <button
+                  type="button"
+                  key={link.href}
+                  onClick={() => handleNavClick(link.href)}
+                  className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
+                  data-ocid="nav.link"
+                >
+                  {link.label}
+                </button>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
+                  data-ocid="nav.link"
+                >
+                  {link.label}
+                </Link>
+              ),
+            )}
           </nav>
         ) : (
           <div className="hidden md:block" />
@@ -131,17 +143,29 @@ export default function Navbar() {
             className="md:hidden glass-strong border-t border-border overflow-hidden"
           >
             <nav className="flex flex-col px-4 py-4 gap-3">
-              {navLinks.map((link) => (
-                <button
-                  type="button"
-                  key={link.href}
-                  onClick={() => handleNavClick(link.href)}
-                  className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2"
-                  data-ocid="nav.link"
-                >
-                  {link.label}
-                </button>
-              ))}
+              {navLinks.map((link) =>
+                link.isHash ? (
+                  <button
+                    type="button"
+                    key={link.href}
+                    onClick={() => handleNavClick(link.href)}
+                    className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2"
+                    data-ocid="nav.link"
+                  >
+                    {link.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2 block"
+                    data-ocid="nav.link"
+                  >
+                    {link.label}
+                  </Link>
+                ),
+              )}
               <Link
                 to="/get-started"
                 onClick={() => setMobileOpen(false)}

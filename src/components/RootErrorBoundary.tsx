@@ -8,17 +8,18 @@ type State = { error: Error | null };
  * Catches React render errors so production (e.g. Vercel) shows a message instead of a blank screen.
  */
 export class RootErrorBoundary extends Component<Props, State> {
+  declare props: Readonly<Props>;
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
     return { error };
   }
 
-  override componentDidCatch(error: Error, info: ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[RootErrorBoundary]", error, info.componentStack);
   }
 
-  override render() {
+  render() {
     if (this.state.error) {
       return (
         <div

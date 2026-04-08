@@ -1,4 +1,4 @@
-﻿import {
+import {
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -20,6 +20,7 @@ const ContactPage = lazy(() => import("./pages/footer/ContactPage"));
 const PrivacyPage = lazy(() => import("./pages/footer/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/footer/TermsPage"));
 const GetStartedPage = lazy(() => import("./pages/home/GetStartedPage"));
+const CollegePredictorPage = lazy(() => import("./pages/home/CollegePredictorPage"));
 const StudentDashboard = lazy(() => import("./pages/dashboard/StudentDashboard"));
 const StudentAdvisorDetailPage = lazy(() => import("./pages/dashboard/StudentAdvisorDetailPage"));
 const StudentSessionDetailPage = lazy(() => import("./pages/dashboard/StudentSessionDetailPage"));
@@ -46,6 +47,11 @@ const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cont
 const privacyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/privacy", component: PrivacyPage });
 const termsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/terms", component: TermsPage });
 const getStartedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/get-started", component: GetStartedPage });
+const collegePredictorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/college-predictor",
+  component: CollegePredictorPage,
+});
 const pendingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pending", component: PendingApproval });
 const studentDashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: "/student/dashboard", component: StudentDashboard });
 const studentAdvisorDetailRoute = createRoute({
@@ -76,6 +82,7 @@ const routeTree = rootRoute.addChildren([
   privacyRoute,
   termsRoute,
   getStartedRoute,
+  collegePredictorRoute,
   pendingRoute,
   studentDashboardRoute,
   studentAdvisorDetailRoute,
@@ -127,12 +134,6 @@ export const router = createRouter({
   InnerWrap: RouterBootShell,
   defaultPendingComponent: RoutePendingFallback,
 });
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
 
 export function AppRouterProvider() {
   return <RouterProvider router={router} />;

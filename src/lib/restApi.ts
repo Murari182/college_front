@@ -216,7 +216,7 @@ export type BookingResponse = {
   end_time: string;
   selected_slot: string;
   session_price: string;
-  status: "pending" | "confirmed" | "cancelled" | "finalized";
+  status: "pending" | "confirmed" | "cancelled" | "finalized" | "changed";
   google_event_id?: string;
   meet_link?: string;
   student_joined: boolean;
