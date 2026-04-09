@@ -241,6 +241,20 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
 // Engineering-focused / others (avoid duplicate domain keys above)
 "shivajicollege.ac.in": "Shivaji College",
 "jainuniversity.ac.in": "Jain University",
+
+"srmist.edu.in": "SRM Institute of Science and Technology (Kattankulathur, Ramapuram, Vadapalani, NCR)",
+"srmrmp.edu.in": "SRM IST Ramapuram Campus",
+"srmistvdp.edu.in": "SRM IST Vadapalani Campus",
+"srmup.in": "SRM IST Delhi-NCR (Modinagar)",
+"srmtrichy.edu.in": "SRM IST Tiruchirappalli (Trichy)",
+
+"srmap.edu.in": "SRM University AP (Amaravati)",
+"srmuniversity.ac.in": "SRM University Haryana (Sonepat)",
+"srmus.ac.in": "SRM University Sikkim (Gangtok)",
+
+"trp.srmtrichy.edu.in": "SRM TRP Engineering College (Trichy)"
+
+
 };
 
 const HOURLY_TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
