@@ -100,18 +100,18 @@ export default function Navbar() {
 
         {/* Get Started Button */}
         {showTopNav ? (
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/auth/signin"
-              className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
-            >
-              Sign In
-            </Link>
+          <div className="hidden md:flex items-center gap-6">
             <Link
               to="/auth/signup"
               className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 text-black font-semibold rounded-xl px-5 py-2 text-sm glow-orange transition-all duration-300"
             >
               Sign Up
+            </Link>
+            <Link
+              to="/auth/signin"
+              className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
+            >
+              Sign In
             </Link>
           </div>
         ) : null}
@@ -173,18 +173,19 @@ export default function Navbar() {
                 ),
               )}
               <Link
-                to="/auth/signin"
-                onClick={() => setMobileOpen(false)}
-                className="text-center text-sm font-medium text-foreground py-2 mt-1"
-              >
-                Sign In
-              </Link>
-              <Link
                 to="/auth/signup"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-2"
+                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-4"
               >
                 Sign Up
+              </Link>
+
+              <Link
+                to="/auth/signin"
+                onClick={() => setMobileOpen(false)}
+                className="text-center text-sm font-medium text-foreground py-2 mt-2"
+              >
+                Sign In
               </Link>
             </nav>
           </motion.div>
