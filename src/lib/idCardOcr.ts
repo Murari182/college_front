@@ -1,11 +1,3 @@
-export type StudentIdCardExtractedFields = {
-  fullName?: string;
-  email?: string;
-  mobileNumber?: string;
-  gender?: "male" | "female" | "other";
-  state?: string;
-  dateOfBirth?: string;
-};
 
 export type AdvisorIdCardExtractedFields = {
   fullName?: string;
@@ -286,21 +278,6 @@ function findRollNumber(text: string): string | undefined {
   ]);
 }
 
-export async function extractStudentFieldsFromIdCard(
-  frontFile: File,
-  backFile: File,
-  states: string[],
-): Promise<StudentIdCardExtractedFields> {
-  const text = await recognizeMerged(frontFile, backFile);
-  return {
-    fullName: findFullName(text),
-    email: findEmail(text),
-    mobileNumber: findPhone(text),
-    dateOfBirth: findDateOfBirth(text),
-    gender: findGender(text),
-    state: findState(text, states),
-  };
-}
 
 export async function extractAdvisorFieldsFromIdCard(
   frontFile: File,

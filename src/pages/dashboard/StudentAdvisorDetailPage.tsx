@@ -277,8 +277,6 @@ export default function StudentAdvisorDetailPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-3">
-                {row("skills", advisor.skills?.trim() || "")}
-                {row("achievements", advisor.achievements?.trim() || "")}
                 {row("languages", formatLanguages(advisor))}
               </div>
 
