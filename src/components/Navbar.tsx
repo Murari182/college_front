@@ -38,7 +38,9 @@ export default function Navbar() {
   const isPostSigninPage =
     location.pathname.startsWith("/student/dashboard") ||
     location.pathname.startsWith("/advisor/dashboard");
-  const showTopNav = !isPostSigninPage || !authResolved || !authUser;
+  // We now show the Top Nav links even after sign-in, but handle layouts better
+  const showTopNavLinks = true;
+  const showAuthButtons = !isPostSigninPage || !authResolved || !authUser;
 
   const handleNavClick = (href: string) => {
     setMobileOpen(false);
@@ -69,7 +71,7 @@ export default function Navbar() {
         <BrandLogo size="sm" asLink withText />
 
         {/* Desktop Nav */}
-        {showTopNav ? (
+        {showTopNavLinks ? (
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) =>
               link.isHash ? (
@@ -93,38 +95,43 @@ export default function Navbar() {
                 </Link>
               ),
             )}
+            <Link
+              to="/about"
+              className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
+            >
+              About
+            </Link>
           </nav>
-        ) : (
-          <div className="hidden md:block" />
-        )}
+        ) : null}
 
         {/* Get Started Button */}
-        {showTopNav ? (
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/auth/signin"
-              className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
-            >
-              Sign In
-            </Link>
+        {showAuthButtons ? (
+          <div className="hidden md:flex items-center gap-6">
             <Link
               to="/auth/signup"
               className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 text-black font-semibold rounded-xl px-5 py-2 text-sm glow-orange transition-all duration-300"
             >
               Sign Up
             </Link>
+            <Link
+              to="/auth/signin"
+              className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
+            >
+              Sign In
+            </Link>
           </div>
         ) : null}
 
-        {/* Mobile actions */}
-        {showTopNav ? (
+        {showTopNavLinks ? (
           <div className="md:hidden flex items-center gap-2">
-            <Link
-              to="/auth/signup"
-              className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-lg px-3 py-1.5 text-xs glow-orange transition-all duration-300"
-            >
-              Sign Up
-            </Link>
+            {showAuthButtons && (
+              <Link
+                to="/auth/signup"
+                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-lg px-3 py-1.5 text-xs glow-orange transition-all duration-300"
+              >
+                Sign Up
+              </Link>
+            )}
             <button
               type="button"
               className="text-foreground p-2"
@@ -140,7 +147,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       <AnimatePresence>
-        {showTopNav && mobileOpen && (
+        {showTopNavLinks && mobileOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -172,20 +179,45 @@ export default function Navbar() {
                   </Link>
                 ),
               )}
-              <Link
-                to="/auth/signin"
-                onClick={() => setMobileOpen(false)}
-                className="text-center text-sm font-medium text-foreground py-2 mt-1"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/auth/signup"
-                onClick={() => setMobileOpen(false)}
-                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-2"
-              >
-                Sign Up
-              </Link>
+              {showAuthButtons ? (
+                <>
+                  <Link
+                    to="/auth/signup"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-4"
+                  >
+                    Sign Up
+                  </Link>
+
+                  <Link
+                    to="/auth/signin"
+                    onClick={() => setMobileOpen(false)}
+                    className="text-center text-sm font-medium text-foreground py-2 mt-2"
+                  >
+                    Sign In
+                  </Link>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    getFirebaseAuth().signOut();
+                    window.location.href = "/";
+                  }}
+                  className="text-center text-sm font-medium text-muted-foreground py-4 mt-2 border-t border-border/20"
+                >
+                  Sign Out
+                </button>
+              )}
+
+              {/* Legal Section */}
+              <div className="border-t border-border/40 mt-6 pt-6 flex flex-col gap-4">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-2">Support & Legal</p>
+                <Link to="/about" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">About</Link>
+                <Link to="/privacy" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Privacy Policy</Link>
+                <Link to="/terms" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Terms of Service</Link>
+                <Link to="/contact" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Contact Us</Link>
+              </div>
             </nav>
           </motion.div>
         )}

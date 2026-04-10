@@ -31,6 +31,18 @@ const HOURLY_TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
   return `${hour12}:00 ${suffix}`;
 });
 
+const ADVISOR_PRICE_OPTIONS = [
+  "99",
+  "149",
+  "199",
+  "249",
+  "299",
+  "399",
+  "499",
+  "599",
+  "999",
+];
+
 function parsePreferredTimezoneSlots(
   slots: string[] | undefined,
 ): Array<{ from: string; to: string }> {
@@ -522,16 +534,36 @@ export default function AdvisorDashboard() {
                     ["Current Study Year", "current_study_year"],
                   ] as const
                 ).map(([label, key]) => (
-                  <label key={key} className="text-xs text-muted-foreground flex flex-col gap-1">
-                    {label}
-                    <input
-                      value={editForm[key]}
-                      onChange={(e) =>
-                        setEditForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
-                      className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground"
-                    />
-                  </label>
+                    <label key={key} className="text-xs text-muted-foreground flex flex-col gap-1">
+                      {label}
+                      {key === "session_price" ? (
+                        <select
+                          value={editForm.session_price}
+                          onChange={(e) =>
+                            setEditForm((p) => ({
+                              ...p,
+                              session_price: e.target.value,
+                            }))
+                          }
+                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon-orange transition-colors cursor-pointer"
+                        >
+                          <option value="">Select Price</option>
+                          {ADVISOR_PRICE_OPTIONS.map((price) => (
+                            <option key={`price-${price}`} value={price}>
+                              Rs {price}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={editForm[key]}
+                          onChange={(e) =>
+                            setEditForm((p) => ({ ...p, [key]: e.target.value }))
+                          }
+                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground"
+                        />
+                      )}
+                    </label>
                 ))}
                 <label className="sm:col-span-2 text-xs text-muted-foreground flex flex-col gap-1">
                   Bio
