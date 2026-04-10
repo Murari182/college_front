@@ -163,7 +163,6 @@ const EMAIL_TO_COLLEGE: Record<string, string> = {
 
   "vitstudent.ac.in": "VIT Vellore",
 
-  "srmist.edu.in": "SRM Institute of Science and Technology",
 
   "srm.edu.in": "SRM University",
 
