@@ -208,17 +208,16 @@ export default function CTASection() {
 
                 <div className="flex flex-col gap-3">
                   {/* Student buttons */}
-                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">As a Student</p>
                   <div className="flex gap-3">
                     <Link
-                      to="/auth/student/login"
+                      to="/auth/signin"
                       className="flex-1 inline-flex items-center justify-center gap-2 border border-neon-teal/40 text-neon-teal hover:bg-neon-teal/10 rounded-xl px-4 py-2.5 text-sm transition-all"
                     >
                       <LogIn size={14} />
                       Sign In
                     </Link>
                     <Link
-                      to="/auth/student/signup"
+                      to="/auth/signup"
                       className="flex-1 inline-flex items-center justify-center gap-2 bg-neon-teal hover:bg-neon-teal/80 text-black font-semibold rounded-xl px-4 py-2.5 text-sm transition-all"
                     >
                       <UserPlus size={14} />
@@ -226,31 +225,7 @@ export default function CTASection() {
                     </Link>
                   </div>
 
-                  {/* Divider */}
-                  <div className="flex items-center gap-3 my-1">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs text-muted-foreground">or</span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
 
-                  {/* Advisor buttons */}
-                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">As an Advisor</p>
-                  <div className="flex gap-3">
-                    <Link
-                      to="/auth/advisor/login"
-                      className="flex-1 inline-flex items-center justify-center gap-2 border border-neon-orange/40 text-neon-orange hover:bg-neon-orange/10 rounded-xl px-4 py-2.5 text-sm transition-all"
-                    >
-                      <LogIn size={14} />
-                      Sign In
-                    </Link>
-                    <Link
-                      to="/auth/advisor/signup"
-                      className="flex-1 inline-flex items-center justify-center gap-2 bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-4 py-2.5 text-sm transition-all"
-                    >
-                      <UserPlus size={14} />
-                      Sign Up
-                    </Link>
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -402,7 +377,7 @@ export default function CTASection() {
                       </AnimatePresence>
 
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Link to="/auth/advisor/signup">
+                        <Link to="/auth/signup">
                           <Button className="bg-neon-orange hover:bg-neon-orange/90 text-background font-semibold rounded-xl px-6 glow-orange">
                             <UserPlus size={16} className="mr-2" />
                             Become an Advisor

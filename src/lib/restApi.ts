@@ -61,9 +61,7 @@ export type AdvisorProfileResponse = {
   branch: string;
   phone?: string;
   state?: string;
-  bio: string;
-  skills: string;
-  achievements?: string;
+  bio?: string;
   languages: string[];
   preferred_timezones?: string[];
   session_price: string;
@@ -74,6 +72,8 @@ export type AdvisorProfileResponse = {
   total_earnings?: number;
   total_sessions?: number;
   total_students?: number;
+  college_id_front_key?: string;
+  college_id_back_key?: string;
 };
 
 export type ReferralSummaryResponse = {
@@ -93,7 +93,7 @@ export type StudentProfileResponse = {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   state: string;
   academic_status: string;
   jee_mains_percentile: string;
@@ -115,8 +115,7 @@ export type AdvisorDirectoryItem = {
   study_year_at_signup?: number;
   study_year_anchor_date?: string;
   created_at?: string;
-  skills: string;
-  bio: string;
+  bio?: string;
   languages: string[];
   preferred_timezones?: string[];
 };
@@ -130,8 +129,6 @@ export type AdvisorPublicDetail = {
   branch?: string;
   state?: string;
   bio?: string;
-  skills?: string;
-  achievements?: string;
   languages?: string[];
   language_other?: string;
   session_price?: string;
@@ -516,95 +513,7 @@ export async function reportNoShowAction(
 
 // S3 & Referral functions added from upstream updates
 
-export async function uploadCollegeIdPairToS3(
-  firebaseIdToken: string,
-  role: "advisor" | "student",
-  frontFile: File,
-  backFile: File,
-): Promise<{ collegeIdFrontKey: string; collegeIdBackKey: string }> {
-  async function uploadSide(side: "front" | "back") {
-    const file = side === "front" ? frontFile : backFile;
-    const res = await fetch(url("/api/upload/college-id/presign"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${firebaseIdToken}`,
-      },
-      body: JSON.stringify({ role, side, contentType: file.type }),
-    });
-    if (!res.ok) throw new Error(await parseErrorMessage(res));
-    const { uploadUrl, key } = await res.json();
-    const putRes = await fetch(uploadUrl, { method: "PUT", body: file });
-    if (!putRes.ok) throw new Error("Could not upload file to S3 storage.");
-    return key;
-  }
-  const [f, b] = await Promise.all([uploadSide("front"), uploadSide("back")]);
-  return { collegeIdFrontKey: f, collegeIdBackKey: b };
-}
 
-type TempCollegeIdPairPresignResponse = {
-  tempUploadToken: string;
-  front: { uploadUrl: string; key: string; bucket: string };
-  back: { uploadUrl: string; key: string; bucket: string };
-};
-
-export async function uploadCollegeIdPairToS3Temp(
-  role: "advisor" | "student",
-  frontFile: File,
-  backFile: File,
-): Promise<{ tempUploadToken: string; collegeIdFrontKey: string; collegeIdBackKey: string }> {
-  const form = new FormData();
-  form.append("role", role);
-  form.append("front_file", frontFile);
-  form.append("back_file", backFile);
-
-  const directRes = await fetch(url("/api/upload/college-id/temp/upload"), {
-    method: "POST",
-    body: form,
-  });
-  if (directRes.ok) {
-    const direct = await parseJsonOrThrow<TempCollegeIdPairPresignResponse>(directRes);
-    return {
-      tempUploadToken: direct.tempUploadToken,
-      collegeIdFrontKey: direct.front.key,
-      collegeIdBackKey: direct.back.key,
-    };
-  }
-
-  const directErr = await parseErrorMessage(directRes);
-  if (directRes.status === 503 && /not configured/i.test(directErr)) {
-    // Local/dev mode without S3: skip pre-upload and continue signup flow.
-    return { tempUploadToken: "", collegeIdFrontKey: "", collegeIdBackKey: "" };
-  }
-
-  const presignRes = await fetch(url("/api/upload/college-id/temp/presign"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      role,
-      frontContentType: frontFile.type,
-      backContentType: backFile.type,
-    }),
-  });
-  if (!presignRes.ok) {
-    const presignErr = await parseErrorMessage(presignRes);
-    if (presignRes.status === 503 && /not configured/i.test(presignErr)) {
-      return { tempUploadToken: "", collegeIdFrontKey: "", collegeIdBackKey: "" };
-    }
-    throw new Error(presignErr);
-  }
-  const presigned = await parseJsonOrThrow<TempCollegeIdPairPresignResponse>(presignRes);
-  const [frontPut, backPut] = await Promise.all([
-    fetch(presigned.front.uploadUrl, { method: "PUT", body: frontFile }),
-    fetch(presigned.back.uploadUrl, { method: "PUT", body: backFile }),
-  ]);
-  if (!frontPut.ok || !backPut.ok) throw new Error("Could not upload temporary ID images to S3.");
-  return {
-    tempUploadToken: presigned.tempUploadToken,
-    collegeIdFrontKey: presigned.front.key,
-    collegeIdBackKey: presigned.back.key,
-  };
-}
 
 export async function uploadProfilePictureToS3(
   firebaseIdToken: string,
@@ -624,6 +533,48 @@ export async function uploadProfilePictureToS3(
   const putRes = await fetch(uploadUrl, { method: "PUT", body: file });
   if (!putRes.ok) throw new Error("Could not upload profile picture to S3 storage.");
   return key;
+}
+
+export async function uploadCollegeIdPairToS3(
+  firebaseIdToken: string,
+  front: File,
+  back: File,
+): Promise<{ frontKey: string; backKey: string }> {
+  try {
+    // 1. Get presigned URLs for both
+    const res = await fetch(url("/api/upload/college-id/presign-pair"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firebaseIdToken}`,
+      },
+      body: JSON.stringify({
+        frontContentType: front.type,
+        backContentType: back.type,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(await parseErrorMessage(res));
+    }
+
+    const { frontUploadUrl, frontKey, backUploadUrl, backKey } = await res.json();
+
+    // 2. Upload to S3
+    const [frontRes, backRes] = await Promise.all([
+      fetch(frontUploadUrl, { method: "PUT", body: front }),
+      fetch(backUploadUrl, { method: "PUT", body: back }),
+    ]);
+
+    if (!frontRes.ok || !backRes.ok) {
+      throw new Error("Could not upload ID cards to S3 storage.");
+    }
+
+    return { frontKey, backKey };
+  } catch (err) {
+    console.error("uploadCollegeIdPairToS3 failed:", err);
+    throw err;
+  }
 }
 
 export async function getAdvisorReferralSummary(

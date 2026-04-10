@@ -25,11 +25,7 @@ const PUBLIC: Record<string, RouteSeo> = {
     title: `${SITE_NAME} | Find your college advisor`,
     description: DEFAULT_DESCRIPTION,
   },
-  "/get-started": {
-    title: `Get Started | ${SITE_NAME}`,
-    description:
-      "Join Collegeconnects as a student or advisor. Sign up to book mentoring sessions or offer guidance from your campus.",
-  },
+
   "/college-predictor": {
     title: `College Predictor | ${SITE_NAME}`,
     description:
@@ -51,23 +47,13 @@ const PUBLIC: Record<string, RouteSeo> = {
     title: `Terms of Service | ${SITE_NAME}`,
     description: `Terms of service for using ${SITE_NAME} as a student or advisor.`,
   },
-  "/auth/student/signup": {
-    title: `Student Sign Up | ${SITE_NAME}`,
-    description:
-      "Create a student account on Collegeconnects to browse advisors and book mentoring sessions.",
+  "/auth/signup": {
+    title: `Sign Up | ${SITE_NAME}`,
+    description: "Create an account on Collegeconnects to browse advisors or guide students.",
   },
-  "/auth/student/login": {
-    title: `Student Sign In | ${SITE_NAME}`,
-    description: "Sign in to your Collegeconnects student account.",
-  },
-  "/auth/advisor/signup": {
-    title: `Advisor Sign Up | ${SITE_NAME}`,
-    description:
-      "Register as a college advisor on Collegeconnects. Share your campus experience and set your session availability.",
-  },
-  "/auth/advisor/login": {
-    title: `Advisor Sign In | ${SITE_NAME}`,
-    description: "Sign in to your Collegeconnects advisor dashboard.",
+  "/auth/signin": {
+    title: `Sign In | ${SITE_NAME}`,
+    description: "Sign in to your Collegeconnects account.",
   },
 };
 

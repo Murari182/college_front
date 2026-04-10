@@ -1,4 +1,4 @@
-﻿import { BrandLogo } from "@/components/BrandLogo";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Link } from "@tanstack/react-router";
 import { Briefcase, GraduationCap, LogIn, UserPlus } from "lucide-react";
 import { motion } from "motion/react";
@@ -42,96 +42,21 @@ export default function AuthenticationSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Advisor card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="relative glass rounded-2xl border border-neon-orange/30 p-6 sm:p-8 group hover:-translate-y-1.5 transition-transform duration-300"
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <Link
+            to="/auth/signup"
+            className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 hover:shadow-lg text-black font-semibold rounded-2xl px-10 py-4 text-lg glow-orange transition-all duration-300 min-w-[200px]"
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 rounded-2xl bg-neon-orange/10 flex items-center justify-center">
-                <Briefcase className="text-neon-orange" size={20} />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-display font-semibold text-foreground">
-                For Advisors
-              </h3>
-            </div>
-            <p className="text-sm sm:text-base text-muted-foreground mb-6">
-              Create your advisor profile or sign back in to manage sessions.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/auth/advisor/signup"
-                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 hover:shadow-lg text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300"
-              >
-                <UserPlus size={16} className="mr-2" />
-                Sign Up for Advisor
-              </Link>
-              <Link
-                to="/auth/advisor/login"
-                className="inline-flex items-center justify-center border border-neon-orange/40 text-neon-orange hover:bg-neon-orange/15 hover:border-neon-orange hover:scale-105 hover:shadow-lg rounded-xl px-5 py-2.5 text-sm transition-all duration-300"
-              >
-                <LogIn size={16} className="mr-2" />
-                Sign In for Advisor
-              </Link>
-            </div>
-
-            <div
-              className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{
-                boxShadow: "inset 0 0 26px oklch(0.67 0.19 40 / 0.08), 0 0 40px oklch(0.67 0.19 40 / 0.06)",
-              }}
-            />
-          </motion.div>
-
-          {/* Student card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.55, ease: "easeOut", delay: 0.05 }}
-            className="relative glass rounded-2xl border border-neon-teal/30 p-6 sm:p-8 group hover:-translate-y-1.5 transition-transform duration-300"
+            <UserPlus size={20} className="mr-2" />
+            Sign Up
+          </Link>
+          <Link
+            to="/auth/signin"
+            className="inline-flex items-center justify-center border-2 border-neon-teal/40 text-neon-teal hover:bg-neon-teal/15 hover:border-neon-teal hover:scale-105 hover:shadow-lg rounded-2xl px-10 py-4 text-lg glow-teal transition-all duration-300 min-w-[200px]"
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 rounded-2xl bg-neon-teal/10 flex items-center justify-center">
-                <GraduationCap className="text-neon-teal" size={20} />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-display font-semibold text-foreground">
-                For Students
-              </h3>
-            </div>
-            <p className="text-sm sm:text-base text-muted-foreground mb-6">
-              Get started booking sessions or sign in to continue your journey.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/auth/student/signup"
-                className="inline-flex items-center justify-center bg-neon-teal hover:bg-neon-teal/80 hover:scale-105 hover:shadow-lg text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-teal transition-all duration-300"
-              >
-                <UserPlus size={16} className="mr-2" />
-                Sign Up for Student
-              </Link>
-              <Link
-                to="/auth/student/login"
-                className="inline-flex items-center justify-center border border-neon-teal/40 text-neon-teal hover:bg-neon-teal/15 hover:border-neon-teal hover:scale-105 hover:shadow-lg rounded-xl px-5 py-2.5 text-sm transition-all duration-300"
-              >
-                <LogIn size={16} className="mr-2" />
-                Sign In for Student
-              </Link>
-            </div>
-
-            <div
-              className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{
-                boxShadow: "inset 0 0 26px oklch(0.78 0.15 175 / 0.08), 0 0 40px oklch(0.78 0.15 175 / 0.06)",
-              }}
-            />
-          </motion.div>
+            <LogIn size={20} className="mr-2" />
+            Sign In
+          </Link>
         </div>
       </div>
     </section>

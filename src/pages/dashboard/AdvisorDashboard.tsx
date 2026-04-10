@@ -6,6 +6,7 @@ import {
   type AdvisorProfileResponse,
   type BookingResponse,
   updateMyAdvisorProfile,
+  uploadCollegeIdPairToS3,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
@@ -57,11 +58,12 @@ export default function AdvisorDashboard() {
     phone: "",
     state: "",
     bio: "",
-    skills: "",
-    achievements: "",
     session_price: "",
+    current_study_year: "",
     preferred_timezones: [{ from: "", to: "" }, { from: "", to: "" }, { from: "", to: "" }, { from: "", to: "" }],
   });
+  const [frontFile, setFrontFile] = useState<File | null>(null);
+  const [backFile, setBackFile] = useState<File | null>(null);
   useEffect(() => {
     document.title = "Advisor Dashboard  -  Collegeconnects";
   }, []);
@@ -126,9 +128,8 @@ export default function AdvisorDashboard() {
       phone: advisor.phone || "",
       state: advisor.state || "",
       bio: advisor.bio || "",
-      skills: advisor.skills || "",
-      achievements: advisor.achievements || "",
       session_price: advisor.session_price || "",
+      current_study_year: advisor.current_study_year?.toString() || "",
       preferred_timezones: parsePreferredTimezoneSlots(advisor.preferred_timezones),
     });
   }, [advisor]);
@@ -139,17 +140,13 @@ export default function AdvisorDashboard() {
   const advisorBranch = advisor?.branch || "Not available";
   const advisorStudyYearLabel = formatStudyYearLabel(computeEffectiveStudyYear(advisor ?? {}));
   const advisorSessionPrice = Number(advisor?.session_price || "0");
-  const advisorLanguages =
-    advisor?.languages && advisor.languages.length > 0
-      ? advisor.languages.join(", ")
-      : "Not specified";
-  const advisorSkills = advisor?.skills || "Not specified";
-  const advisorAchievements = advisor?.achievements || "Not specified";
+  const advisorBio = advisor?.bio || "No bio added yet.";
+  const advisorIsVerified = !!(advisor?.college_id_front_key && advisor?.college_id_back_key);
   const advisorPreferredTimezones =
     advisor?.preferred_timezones && advisor.preferred_timezones.length > 0
       ? advisor.preferred_timezones.join(", ")
       : "Not specified";
-  const advisorBio = advisor?.bio || "No bio added yet.";
+
   const advisorTotalEarnings = advisor?.total_earnings ?? 0;
   const advisorTotalSessions = advisor?.total_sessions ?? 0;
   const advisorTotalStudents = advisor?.total_students ?? 0;
@@ -175,20 +172,44 @@ export default function AdvisorDashboard() {
     setSavingProfile(true);
     try {
       const token = await u.getIdToken(true);
+
+      let frontKey = advisor?.college_id_front_key;
+      let backKey = advisor?.college_id_back_key;
+
+      // Mandatory check: must have existing keys or be uploading new files
+      if (!frontKey && !frontFile) {
+        throw new Error("College ID (Front) is mandatory.");
+      }
+      if (!backKey && !backFile) {
+        throw new Error("College ID (Back) is mandatory.");
+      }
+
+      // 1. Upload new files if selected
+      if (frontFile && backFile) {
+        const keys = await uploadCollegeIdPairToS3(token, frontFile, backFile);
+        frontKey = keys.frontKey;
+        backKey = keys.backKey;
+      } else if (frontFile || backFile) {
+        throw new Error("Please select both Front and Back ID card files.");
+      }
+
       const updated = await updateMyAdvisorProfile(token, {
         name: editForm.name.trim(),
         branch: editForm.branch.trim(),
         phone: editForm.phone.trim(),
         state: editForm.state.trim(),
         bio: editForm.bio.trim(),
-        skills: editForm.skills.trim(),
-        achievements: editForm.achievements.trim(),
         session_price: editForm.session_price.trim(),
+        current_study_year: editForm.current_study_year ? parseInt(editForm.current_study_year) : undefined,
         preferred_timezones: parsedPreferredTimezones,
+        college_id_front_key: frontKey,
+        college_id_back_key: backKey,
       });
       setAdvisor(updated);
       setIsEditingProfile(false);
       setProfileError(null);
+      setFrontFile(null);
+      setBackFile(null);
     } catch (e) {
       setProfileError(e instanceof Error ? e.message : "Could not save profile.");
     } finally {
@@ -221,11 +242,10 @@ export default function AdvisorDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap ${
-                activeTab === tab.id
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
                   ? "bg-neon-orange text-black"
                   : "glass border border-border text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <tab.icon size={15} />
               {tab.label}
@@ -278,8 +298,7 @@ export default function AdvisorDashboard() {
                   { label: "Branch", value: advisorBranch },
                   { label: "Current Year", value: advisorStudyYearLabel },
                   { label: "Session Price", value: advisorSessionPrice > 0 ? `Rs ${advisorSessionPrice}` : "Not set" },
-                  { label: "Languages", value: advisorLanguages },
-                  { label: "Skills", value: advisorSkills },
+                  { label: "Verification Status", value: advisorIsVerified ? "Verified ✅" : "Verification Required ❌" },
                   { label: "Preferred Time Slots", value: advisorPreferredTimezones },
                 ].map(item => (
                   <div key={item.label} className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
@@ -500,8 +519,7 @@ export default function AdvisorDashboard() {
                     ["Phone", "phone"],
                     ["State", "state"],
                     ["Session Price", "session_price"],
-                    ["Skills", "skills"],
-                    ["Achievements", "achievements"],
+                    ["Current Study Year", "current_study_year"],
                   ] as const
                 ).map(([label, key]) => (
                   <label key={key} className="text-xs text-muted-foreground flex flex-col gap-1">
@@ -526,6 +544,43 @@ export default function AdvisorDashboard() {
                     className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground"
                   />
                 </label>
+                {!advisorIsVerified && !isEditingProfile && (
+                  <div className="sm:col-span-2 p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
+                    <p className="text-sm font-semibold text-orange-500">ID Verification Required</p>
+                    <p className="text-xs text-muted-foreground mt-1">Please upload your college ID card (Front & Back) to complete your advisor profile.</p>
+                  </div>
+                )}
+                {isEditingProfile && (
+                  <div className="sm:col-span-2 space-y-4 pt-4 border-t border-border mt-4">
+                    <p className="text-sm font-semibold text-foreground italic">Mandatory: College ID Card</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                        Front Side
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setFrontFile(e.target.files?.[0] || null)}
+                          className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-neon-orange file:text-black hover:file:bg-neon-orange/80 cursor-pointer"
+                        />
+                        {advisor?.college_id_front_key && !frontFile && (
+                          <span className="text-neon-teal">Previously uploaded ✅</span>
+                        )}
+                      </label>
+                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                        Back Side
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setBackFile(e.target.files?.[0] || null)}
+                          className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-neon-orange file:text-black hover:file:bg-neon-orange/80 cursor-pointer"
+                        />
+                        {advisor?.college_id_back_key && !backFile && (
+                          <span className="text-neon-teal">Previously uploaded ✅</span>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <label className="sm:col-span-2 text-xs text-muted-foreground flex flex-col gap-1">
                   Preferred Time Slots
                   <div className="grid grid-cols-1 gap-2">
@@ -614,9 +669,7 @@ export default function AdvisorDashboard() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { label: "Skills", value: advisorSkills },
-                    { label: "Achievements", value: advisorAchievements },
-                    { label: "Languages", value: advisorLanguages },
+                    { label: "Verification Status", value: advisorIsVerified ? "Verified ✅" : "Missing Identification ❌" },
                     { label: "Preferred Time Slots", value: advisorPreferredTimezones },
                     { label: "Session Price", value: advisorSessionPrice > 0 ? `Rs ${advisorSessionPrice}` : "Not set" },
                   ].map(item => (

@@ -10,16 +10,14 @@ import { lazy, type ReactNode } from "react";
 import App from "./App";
 
 const HomePage = lazy(() => import("./pages/home/HomePage"));
-const AdvisorLoginPage = lazy(() => import("./pages/auth/AdvisorLoginPage"));
-const AdvisorSignupPage = lazy(() => import("./pages/auth/AdvisorSignupPage"));
-const StudentLoginPage = lazy(() => import("./pages/auth/StudentLoginPage"));
-const StudentSignupPage = lazy(() => import("./pages/auth/StudentSignupPage"));
+const SigninPage = lazy(() => import("./pages/auth/SigninPage"));
+const SignupPage = lazy(() => import("./pages/auth/SignupPage"));
 const TestAccountPage = lazy(() => import("./pages/auth/TestAccountPage"));
 const AboutPage = lazy(() => import("./pages/footer/AboutPage"));
 const ContactPage = lazy(() => import("./pages/footer/ContactPage"));
 const PrivacyPage = lazy(() => import("./pages/footer/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/footer/TermsPage"));
-const GetStartedPage = lazy(() => import("./pages/home/GetStartedPage"));
+
 const CollegePredictorPage = lazy(() => import("./pages/home/CollegePredictorPage"));
 const StudentDashboard = lazy(() => import("./pages/dashboard/StudentDashboard"));
 const StudentAdvisorDetailPage = lazy(() => import("./pages/dashboard/StudentAdvisorDetailPage"));
@@ -37,16 +35,14 @@ const rootRoute = createRootRoute({
 });
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
-const advisorSignupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/advisor/signup", component: AdvisorSignupPage });
-const advisorLoginRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/advisor/login", component: AdvisorLoginPage });
-const studentSignupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/student/signup", component: StudentSignupPage });
-const studentLoginRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/student/login", component: StudentLoginPage });
+const signupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/signup", component: SignupPage });
+const signinRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/signin", component: SigninPage });
 const testAccountRoute = createRoute({ getParentRoute: () => rootRoute, path: "/auth/test-account", component: TestAccountPage });
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: AboutPage });
 const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: "/contact", component: ContactPage });
 const privacyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/privacy", component: PrivacyPage });
 const termsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/terms", component: TermsPage });
-const getStartedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/get-started", component: GetStartedPage });
+
 const collegePredictorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/college-predictor",
@@ -73,15 +69,8 @@ const advisorSessionDetailRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  advisorSignupRoute,
-  advisorLoginRoute,
-  studentSignupRoute,
-  studentLoginRoute,
-  aboutRoute,
-  contactRoute,
-  privacyRoute,
-  termsRoute,
-  getStartedRoute,
+  signupRoute,
+  signinRoute,
   collegePredictorRoute,
   studentDashboardRoute,
   studentAdvisorDetailRoute,

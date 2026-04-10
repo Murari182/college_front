@@ -140,6 +140,7 @@ export default function StudentDashboard() {
     academic_status: "",
     jee_mains_percentile: "",
     jee_mains_rank: "",
+    jee_advanced_rank: "",
   });
   const [selectedCollege, setSelectedCollege] = useState("All Colleges");
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
@@ -231,6 +232,7 @@ export default function StudentDashboard() {
       academic_status: student.academic_status || "",
       jee_mains_percentile: student.jee_mains_percentile || "",
       jee_mains_rank: student.jee_mains_rank || "",
+      jee_advanced_rank: student.jee_advanced_rank || "",
     });
   }, [student]);
   useEffect(() => {
@@ -267,6 +269,7 @@ export default function StudentDashboard() {
   const studentAcademicStatus = student?.academic_status || "Not available";
   const studentJeeMainsPercentile = student?.jee_mains_percentile || "Not available";
   const studentJeeMainsRank = student?.jee_mains_rank || "Not available";
+  const studentJeeAdvancedRank = student?.jee_advanced_rank || "Not available";
   const welcomeName =
     studentName ||
     authUser?.displayName?.trim() ||
@@ -288,6 +291,7 @@ export default function StudentDashboard() {
         academic_status: editForm.academic_status.trim(),
         jee_mains_percentile: editForm.jee_mains_percentile.trim(),
         jee_mains_rank: editForm.jee_mains_rank.trim(),
+        jee_advanced_rank: editForm.jee_advanced_rank.trim(),
       });
       setStudent(updated);
       setIsEditingProfile(false);
@@ -626,6 +630,7 @@ export default function StudentDashboard() {
                   ["Academic Status", "academic_status"],
                   ["JEE Mains Percentile", "jee_mains_percentile"],
                   ["JEE Mains Rank", "jee_mains_rank"],
+                  ["JEE Advanced Rank", "jee_advanced_rank"],
                 ].map(([label, key]) => (
                   <label key={key} className="text-xs text-muted-foreground flex flex-col gap-1">
                     {label}
@@ -648,6 +653,7 @@ export default function StudentDashboard() {
                   { label: "Academic Status", value: studentAcademicStatus },
                   { label: "JEE Mains Percentile", value: studentJeeMainsPercentile === "Not available" ? studentJeeMainsPercentile : `${studentJeeMainsPercentile}%` },
                   { label: "JEE Mains Rank", value: studentJeeMainsRank },
+                  { label: "JEE Advanced Rank", value: studentJeeAdvancedRank },
                 ].map(item => (
                   <div key={item.label} className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
                     <p className="text-xs text-muted-foreground mb-1">{item.label}</p>

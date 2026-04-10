@@ -2,23 +2,20 @@ import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
+import { getMyStudentProfile, getMyAdvisorProfile } from "@/lib/restApi";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  signInWithEmailAndPassword,
-} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Loader, LogIn } from "lucide-react";
 import { useState } from "react";
 import { AuthShell } from "./AuthShell";
 import { ForgotPasswordOtpDialog } from "@/components/auth/ForgotPasswordOtpDialog";
-import { studentPostAuthPath } from "@/lib/studentPostAuthGate";
 
-export default function StudentLoginPage() {
+export default function SigninPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
-
-  const navigate = useNavigate();
 
   async function handleLogin() {
     if (!email || !password) {
@@ -27,12 +24,31 @@ export default function StudentLoginPage() {
     }
     setBusy(true);
     try {
-      await signInWithEmailAndPassword(
+      // 1. Firebase Auth
+      const userCred = await signInWithEmailAndPassword(
         getFirebaseAuth(),
         email.trim(),
         password,
       );
-      navigate({ to: studentPostAuthPath() });
+      const token = await userCred.user.getIdToken();
+
+      // 2. Auto-detect Role
+      try {
+        // Try Student first
+        await getMyStudentProfile(token);
+        navigate({ to: "/student/dashboard" });
+      } catch (studentErr) {
+        try {
+          // Try Advisor next
+          await getMyAdvisorProfile(token);
+          navigate({ to: "/advisor/dashboard" });
+        } catch (advisorErr) {
+          // If both fail, might be a freshly created user who hasn't registered a profile yet
+          // (shouldn't happen with our signup flow, but good as fallback)
+          alert("Profile not found. Please sign up.");
+          await getFirebaseAuth().signOut();
+        }
+      }
     } catch (e) {
       alert(formatFirebaseAuthError(e));
     } finally {
@@ -40,27 +56,17 @@ export default function StudentLoginPage() {
     }
   }
 
-  function handleForgotPassword() {
-    setForgotOpen(true);
-  }
-
   return (
     <AuthShell
-      title="Student Sign In"
-      subtitle="Welcome back. Sign in to book and manage sessions."
+      title="Welcome Back"
+      subtitle="Sign in to your account. We'll automatically find your dashboard."
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="student-login-email"
-            className="text-sm text-muted-foreground"
-          >
-            Email
-          </label>
+          <label className="text-sm text-muted-foreground">Email</label>
           <input
-            id="student-login-email"
             type="email"
-            placeholder="you@gmail.com"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal transition-colors"
@@ -68,7 +74,6 @@ export default function StudentLoginPage() {
         </div>
 
         <PasswordField
-          id="student-login-password"
           label="Password"
           value={password}
           onChange={setPassword}
@@ -80,20 +85,22 @@ export default function StudentLoginPage() {
           <Button
             onClick={handleLogin}
             disabled={busy}
-            className="bg-neon-teal hover:bg-neon-teal/90 text-background font-semibold rounded-xl px-5 glow-teal transition-all duration-300"
+            className="flex-1 bg-neon-teal hover:bg-neon-teal/90 text-background font-semibold rounded-xl h-11 glow-teal transition-all duration-300"
           >
             {busy ? (
-              <Loader size={16} className="mr-2 animate-spin" />
+              <Loader size={18} className="animate-spin" />
             ) : (
-              <LogIn size={16} className="mr-2" />
+              <>
+                <LogIn size={18} className="mr-2" />
+                Sign In
+              </>
             )}
-            Sign In
           </Button>
           <Button
             type="button"
             variant="outline"
-            onClick={handleForgotPassword}
-            className="border-neon-teal/40 text-neon-teal hover:bg-neon-teal/10 hover:border-neon-teal rounded-xl px-5 transition-all duration-300"
+            onClick={() => setForgotOpen(true)}
+            className="border-border text-foreground hover:bg-muted rounded-xl h-11 transition-all"
           >
             Forgot Password
           </Button>
@@ -102,22 +109,20 @@ export default function StudentLoginPage() {
         <ForgotPasswordOtpDialog
           open={forgotOpen}
           onOpenChange={setForgotOpen}
-          role="student"
+          role="student" // Default to student for reset
           email={email}
           onEmailChange={setEmail}
           accent="teal"
           onResetSuccess={async (e, newPass) => {
             await signInWithEmailAndPassword(getFirebaseAuth(), e, newPass);
-            navigate({ to: studentPostAuthPath() });
+            // After reset, try login logic again
+            handleLogin();
           }}
         />
 
-        <p className="text-sm text-muted-foreground text-center mt-2">
+        <p className="text-center text-sm text-muted-foreground mt-2">
           New here?{" "}
-          <Link
-            to="/auth/student/signup"
-            className="text-neon-teal hover:underline"
-          >
+          <Link to="/auth/signup" className="text-neon-teal font-medium hover:underline">
             Create account
           </Link>
         </p>

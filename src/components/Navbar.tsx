@@ -102,10 +102,16 @@ export default function Navbar() {
         {showTopNav ? (
           <div className="hidden md:flex items-center gap-3">
             <Link
-              to="/get-started"
+              to="/auth/signin"
+              className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/auth/signup"
               className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 text-black font-semibold rounded-xl px-5 py-2 text-sm glow-orange transition-all duration-300"
             >
-              Get Started
+              Sign Up
             </Link>
           </div>
         ) : null}
@@ -114,10 +120,10 @@ export default function Navbar() {
         {showTopNav ? (
           <div className="md:hidden flex items-center gap-2">
             <Link
-              to="/get-started"
+              to="/auth/signup"
               className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-lg px-3 py-1.5 text-xs glow-orange transition-all duration-300"
             >
-              Get Started
+              Sign Up
             </Link>
             <button
               type="button"
@@ -167,11 +173,18 @@ export default function Navbar() {
                 ),
               )}
               <Link
-                to="/get-started"
+                to="/auth/signin"
+                onClick={() => setMobileOpen(false)}
+                className="text-center text-sm font-medium text-foreground py-2 mt-1"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/auth/signup"
                 onClick={() => setMobileOpen(false)}
                 className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-2"
               >
-                Get Started
+                Sign Up
               </Link>
             </nav>
           </motion.div>
