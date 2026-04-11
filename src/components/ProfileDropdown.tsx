@@ -59,10 +59,7 @@ export function ProfileDropdown({ role, userName, avatarUrl }: ProfileDropdownPr
         </DropdownMenuItem>
         
         <DropdownMenuItem 
-          onClick={() => {
-            if (role === 'student') navigate({ to: "/student/dashboard" }); // Logic to scroll/open profile tab
-            else navigate({ to: "/advisor/dashboard" }); 
-          }}
+          onClick={() => navigate({ to: `/${role}/profile` })}
           className="hover:bg-accent cursor-pointer gap-2"
         >
           <User size={16} />

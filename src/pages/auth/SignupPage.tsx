@@ -7,7 +7,7 @@ import { FirebaseError } from "firebase/app";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { CheckCircle, Loader, Mail, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthShell } from "./AuthShell";
 
 export default function SignupPage() {
@@ -21,6 +21,17 @@ export default function SignupPage() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const isPersonalEmail = (email: string) => {
     const personalDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "me.com", "live.com", "msn.com"];
@@ -30,7 +41,7 @@ export default function SignupPage() {
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (isResend = false) => {
     if (role === "advisor" && isPersonalEmail(email)) {
       alert("Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.");
       return;
@@ -39,8 +50,9 @@ export default function SignupPage() {
     try {
       await requestSignupOtp(role, email.trim());
       setOtpSent(true);
-      setStep(4);
-      alert("Verification code sent to your email.");
+      if (!isResend) setStep(4);
+      setResendTimer(60); // Start 60s cooldown
+      alert(isResend ? "New verification code sent!" : "Verification code sent to your email.");
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to send OTP.");
     } finally {
@@ -142,7 +154,7 @@ export default function SignupPage() {
               <PasswordField label="Password" value={password} onChange={setPassword} variant={role === "student" ? "teal" : "orange"} />
               <div className="flex gap-3 mt-4">
                 <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl">Back</Button>
-                <Button onClick={handleSendOtp} disabled={busy} className={`flex-[2] font-semibold rounded-xl ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>
+                <Button onClick={() => handleSendOtp(false)} disabled={busy} className={`flex-[2] font-semibold rounded-xl ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>
                   {busy ? <Loader size={18} className="animate-spin" /> : "Verify & Sign Up"}
                 </Button>
               </div>
@@ -158,7 +170,17 @@ export default function SignupPage() {
               <Button onClick={handleVerifyAndSignup} disabled={busy} className={`w-full font-semibold rounded-xl h-11 ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>
                 {busy ? <Loader size={18} className="animate-spin" /> : <><CheckCircle size={18} className="mr-2" />Complete Signup</>}
               </Button>
-              <button onClick={() => setStep(2)} className="text-xs text-muted-foreground hover:underline text-center">Entered wrong email? Change it here.</button>
+              
+              <div className="flex flex-col items-center gap-2">
+                <button 
+                  onClick={() => handleSendOtp(true)} 
+                  disabled={busy || resendTimer > 0} 
+                  className={`text-sm font-medium transition-colors ${resendTimer > 0 ? "text-muted-foreground cursor-not-allowed" : "text-neon-teal hover:underline"}`}
+                >
+                  {resendTimer > 0 ? `Resend code in ${resendTimer}s` : "Resend Code"}
+                </button>
+                <button onClick={() => setStep(2)} className="text-xs text-muted-foreground hover:underline text-center">Entered wrong email? Change it here.</button>
+              </div>
             </div>
           )}
 
