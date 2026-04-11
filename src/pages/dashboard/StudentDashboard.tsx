@@ -293,7 +293,7 @@ export default function StudentDashboard() {
                     layout
                     whileHover={{ y: -5 }}
                     className="glass group rounded-3xl border border-white/10 p-6 flex flex-col h-full hover:border-neon-teal/50 transition-all cursor-pointer relative overflow-hidden"
-                    onClick={() => navigate({ to: `/student/advisor-detail/${advisor.id}` })}
+                    onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })}
                   >
                     <div className="flex items-start gap-4 mb-4">
                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-teal to-teal-400 flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-neon-teal/20">
