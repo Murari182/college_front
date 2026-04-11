@@ -86,6 +86,10 @@ const routeTree = rootRoute.addChildren([
   studentProfileRoute,
   advisorProfileRoute,
   analysisRoute,
+  aboutRoute,
+  privacyRoute,
+  termsRoute,
+  contactRoute,
   testAccountRoute,
 ]);
 
