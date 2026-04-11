@@ -74,11 +74,17 @@ export default function SignupPage() {
       await updateProfile(user, { displayName: name });
       const token = await user.getIdToken();
 
-      const payload = { 
-        name, 
-        email: email.trim(),
-        referral_code: referralCode.trim() || undefined 
-      };
+      const payload = role === "student" 
+        ? { 
+            name, 
+            email: email.trim(),
+            referral_code: referralCode.trim() || undefined 
+          }
+        : {
+            name,
+            collegeEmail: email.trim(),
+            referral_code: referralCode.trim() || undefined
+          };
 
       if (role === "student") {
         await registerStudent(token, payload);
