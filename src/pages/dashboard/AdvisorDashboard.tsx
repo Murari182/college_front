@@ -22,7 +22,6 @@ const TABS = [
   { id: "sessions", label: "My Sessions", icon: Calendar },
   { id: "earnings", label: "Earnings", icon: IndianRupee },
   { id: "refer", label: "Refer & Earn", icon: Gift },
-  { id: "profile", label: "My Profile", icon: User },
 ];
 
 const HOURLY_TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
@@ -59,9 +58,6 @@ export default function AdvisorDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
   const [advisor, setAdvisor] = useState<AdvisorProfileResponse | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [sessionBookings, setSessionBookings] = useState<BookingResponse[]>([]);
   const [editForm, setEditForm] = useState({
@@ -106,45 +102,16 @@ export default function AdvisorDashboard() {
     let cancelled = false;
     const loadProfile = async () => {
       const u = getFirebaseAuth().currentUser;
-      if (!u) {
-        setLoadingProfile(false);
-        setProfileError("Sign in to view advisor profile.");
-        return;
-      }
-      setLoadingProfile(true);
-      setProfileError(null);
+      if (!u) return;
       try {
         const token = await u.getIdToken(true);
         const profile = await getMyAdvisorProfile(token);
         if (!cancelled) setAdvisor(profile);
-      } catch (e) {
-        if (!cancelled) {
-          setProfileError(
-            e instanceof Error ? e.message : "Could not load advisor profile.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoadingProfile(false);
-      }
+      } catch (e) {}
     };
     void loadProfile();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [authUser?.uid]);
-  useEffect(() => {
-    if (!advisor) return;
-    setEditForm({
-      name: advisor.name || "",
-      branch: advisor.branch || "",
-      phone: advisor.phone || "",
-      state: advisor.state || "",
-      bio: advisor.bio || "",
-      session_price: advisor.session_price || "",
-      current_study_year: advisor.current_study_year?.toString() || "",
-      preferred_timezones: parsePreferredTimezoneSlots(advisor.preferred_timezones),
-    });
-  }, [advisor]);
 
 
   const advisorName = advisor?.name || "Advisor";
@@ -168,66 +135,6 @@ export default function AdvisorDashboard() {
     authUser?.displayName?.trim() ||
     authUser?.email?.split("@")[0] ||
     "Advisor";
-  const handleAdvisorSave = async () => {
-    const u = getFirebaseAuth().currentUser;
-    if (!u) {
-      setProfileError("Sign in to edit advisor profile.");
-      return;
-    }
-    const parsedPreferredTimezones = editForm.preferred_timezones
-      .filter((slot) => slot.from && slot.to && slot.from !== slot.to)
-      .map((slot) => `${slot.from} - ${slot.to}`);
-    if (parsedPreferredTimezones.length < 4) {
-      setProfileError("Please add at least 4 preferred time slots.");
-      return;
-    }
-    setSavingProfile(true);
-    try {
-      const token = await u.getIdToken(true);
-
-      let frontKey = advisor?.college_id_front_key;
-      let backKey = advisor?.college_id_back_key;
-
-      // Mandatory check: must have existing keys or be uploading new files
-      if (!frontKey && !frontFile) {
-        throw new Error("College ID (Front) is mandatory.");
-      }
-      if (!backKey && !backFile) {
-        throw new Error("College ID (Back) is mandatory.");
-      }
-
-      // 1. Upload new files if selected
-      if (frontFile && backFile) {
-        const keys = await uploadCollegeIdPairToS3(token, frontFile, backFile);
-        frontKey = keys.frontKey;
-        backKey = keys.backKey;
-      } else if (frontFile || backFile) {
-        throw new Error("Please select both Front and Back ID card files.");
-      }
-
-      const updated = await updateMyAdvisorProfile(token, {
-        name: editForm.name.trim(),
-        branch: editForm.branch.trim(),
-        phone: editForm.phone.trim(),
-        state: editForm.state.trim(),
-        bio: editForm.bio.trim(),
-        session_price: editForm.session_price.trim(),
-        current_study_year: editForm.current_study_year ? parseInt(editForm.current_study_year) : undefined,
-        preferred_timezones: parsedPreferredTimezones,
-        college_id_front_key: frontKey,
-        college_id_back_key: backKey,
-      });
-      setAdvisor(updated);
-      setIsEditingProfile(false);
-      setProfileError(null);
-      setFrontFile(null);
-      setBackFile(null);
-    } catch (e) {
-      setProfileError(e instanceof Error ? e.message : "Could not save profile.");
-    } finally {
-      setSavingProfile(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background pt-28 sm:pt-32 px-4 sm:px-6">
@@ -244,9 +151,6 @@ export default function AdvisorDashboard() {
           </h1>
           <p className="text-muted-foreground mt-1">Manage your sessions and connect with students</p>
         </motion.div>
-        {profileError ? (
-          <p className="mb-4 text-sm text-amber-500">{profileError}</p>
-        ) : null}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
@@ -265,11 +169,6 @@ export default function AdvisorDashboard() {
           ))}
         </div>
 
-        {loadingProfile && activeTab !== "profile" && (
-          <div className="flex items-center justify-center p-12">
-            <p className="text-muted-foreground animate-pulse">Loading dashboard data...</p>
-          </div>
-        )}
 
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
@@ -504,244 +403,6 @@ export default function AdvisorDashboard() {
           </motion.div>
         )}
 
-        {/* PROFILE TAB */}
-        {activeTab === "profile" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl border border-border p-6 sm:p-8"
-          >
-            {loadingProfile ? (
-              <p className="text-sm text-muted-foreground">Loading profile...</p>
-            ) : null}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-orange to-orange-400 flex items-center justify-center text-2xl font-bold text-white">
-                {advisorName.split(" ").map(n => n[0]).join("")}
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">{advisorName}</h2>
-                <p className="text-muted-foreground text-sm">{advisorCollege} | {advisorBranch}</p>
-              </div>
-            </div>
-
-            {isEditingProfile ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(
-                  [
-                    ["Name", "name"],
-                    ["Branch", "branch"],
-                    ["Phone", "phone"],
-                    ["State", "state"],
-                    ["Session Price", "session_price"],
-                    ["Current Study Year", "current_study_year"],
-                  ] as const
-                ).map(([label, key]) => (
-                    <label key={key} className="text-xs text-muted-foreground flex flex-col gap-1">
-                      {label}
-                      {key === "session_price" ? (
-                        <select
-                          value={editForm.session_price}
-                          onChange={(e) =>
-                            setEditForm((p) => ({
-                              ...p,
-                              session_price: e.target.value,
-                            }))
-                          }
-                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon-orange transition-colors cursor-pointer"
-                        >
-                          <option value="">Select Price</option>
-                          {ADVISOR_PRICE_OPTIONS.map((price) => (
-                            <option key={`price-${price}`} value={price}>
-                              Rs {price}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          value={editForm[key]}
-                          onChange={(e) =>
-                            setEditForm((p) => ({ ...p, [key]: e.target.value }))
-                          }
-                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground"
-                        />
-                      )}
-                    </label>
-                ))}
-                <label className="sm:col-span-2 text-xs text-muted-foreground flex flex-col gap-1">
-                  Bio
-                  <textarea
-                    value={editForm.bio}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, bio: e.target.value }))
-                    }
-                    rows={4}
-                    className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground"
-                  />
-                </label>
-                {!advisorIsVerified && !isEditingProfile && (
-                  <div className="sm:col-span-2 p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
-                    <p className="text-sm font-semibold text-orange-500">ID Verification Required</p>
-                    <p className="text-xs text-muted-foreground mt-1">Please upload your college ID card (Front & Back) to complete your advisor profile.</p>
-                  </div>
-                )}
-                {isEditingProfile && (
-                  <div className="sm:col-span-2 space-y-4 pt-4 border-t border-border mt-4">
-                    <p className="text-sm font-semibold text-foreground italic">Mandatory: College ID Card</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        Front Side
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setFrontFile(e.target.files?.[0] || null)}
-                          className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-neon-orange file:text-black hover:file:bg-neon-orange/80 cursor-pointer"
-                        />
-                        {advisor?.college_id_front_key && !frontFile && (
-                          <span className="text-neon-teal">Previously uploaded ✅</span>
-                        )}
-                      </label>
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        Back Side
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setBackFile(e.target.files?.[0] || null)}
-                          className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-neon-orange file:text-black hover:file:bg-neon-orange/80 cursor-pointer"
-                        />
-                        {advisor?.college_id_back_key && !backFile && (
-                          <span className="text-neon-teal">Previously uploaded ✅</span>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-                )}
-                <label className="sm:col-span-2 text-xs text-muted-foreground flex flex-col gap-1">
-                  Preferred Time Slots
-                  <div className="grid grid-cols-1 gap-2">
-                    {editForm.preferred_timezones.map((slot, index) => (
-                      <div key={`edit-timezone-slot-${index}`} className="grid grid-cols-2 gap-2">
-                        <select
-                          value={slot.from}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              preferred_timezones: prev.preferred_timezones.map((item, i) =>
-                                i === index ? { ...item, from: e.target.value } : item,
-                              ),
-                            }))
-                          }
-                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon-orange transition-colors cursor-pointer"
-                        >
-                          <option value="">From</option>
-                          {HOURLY_TIME_OPTIONS.map((time) => (
-                            <option key={`edit-from-${time}`} value={time}>
-                              {time}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={slot.to}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              preferred_timezones: prev.preferred_timezones.map((item, i) =>
-                                i === index ? { ...item, to: e.target.value } : item,
-                              ),
-                            }))
-                          }
-                          className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon-orange transition-colors cursor-pointer"
-                        >
-                          <option value="">To</option>
-                          {HOURLY_TIME_OPTIONS.map((time) => (
-                            <option key={`edit-to-${time}`} value={time}>
-                              {time}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          preferred_timezones: [...prev.preferred_timezones, { from: "", to: "" }],
-                        }))
-                      }
-                      className="text-xs underline text-neon-orange"
-                    >
-                      + Add another slot
-                    </button>
-                    {editForm.preferred_timezones.length > 4 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            preferred_timezones:
-                              prev.preferred_timezones.length > 4
-                                ? prev.preferred_timezones.slice(0, -1)
-                                : prev.preferred_timezones,
-                          }))
-                        }
-                        className="text-xs underline text-muted-foreground"
-                      >
-                        Remove last slot
-                      </button>
-                    ) : null}
-                  </div>
-                </label>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                <div className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
-                  <p className="text-xs text-muted-foreground mb-1">Bio</p>
-                  <p className="text-sm text-foreground">{advisorBio}</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { label: "Verification Status", value: advisorIsVerified ? "Verified ✅" : "Missing Identification ❌" },
-                    { label: "Preferred Time Slots", value: advisorPreferredTimezones },
-                    { label: "Session Price", value: advisorSessionPrice > 0 ? `Rs ${advisorSessionPrice}` : "Not set" },
-                  ].map(item => (
-                    <div key={item.label} className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
-                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                      <p className="text-sm text-foreground font-medium">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex gap-3">
-              {isEditingProfile ? (
-                <>
-                  <button
-                    onClick={handleAdvisorSave}
-                    disabled={savingProfile}
-                    className="inline-flex items-center gap-2 bg-neon-orange hover:bg-neon-orange/90 text-black rounded-xl px-5 py-2.5 text-sm transition-all disabled:opacity-60"
-                  >
-                    {savingProfile ? "Saving..." : "Save"}
-                  </button>
-                  <button
-                    onClick={() => setIsEditingProfile(false)}
-                    className="inline-flex items-center gap-2 border border-border text-foreground rounded-xl px-5 py-2.5 text-sm transition-all"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setIsEditingProfile(true)}
-                  className="inline-flex items-center gap-2 border border-neon-orange/40 text-neon-orange hover:bg-neon-orange/10 rounded-xl px-5 py-2.5 text-sm transition-all"
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
 
       </div>
     </div>

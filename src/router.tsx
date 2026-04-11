@@ -25,6 +25,8 @@ const StudentSessionDetailPage = lazy(() => import("./pages/dashboard/StudentSes
 
 const AdvisorDashboard = lazy(() => import("./pages/dashboard/AdvisorDashboard"));
 const AdvisorSessionDetailPage = lazy(() => import("./pages/dashboard/AdvisorSessionDetailPage"));
+const StudentProfilePage = lazy(() => import("./pages/dashboard/StudentProfilePage"));
+const AdvisorProfilePage = lazy(() => import("./pages/dashboard/AdvisorProfilePage"));
 const AnalysisPage = lazy(() => import("./pages/dashboard/AnalysisPage"));
 
 const rootRoute = createRootRoute({
@@ -44,6 +46,8 @@ const contactRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cont
 const privacyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/privacy", component: PrivacyPage });
 const termsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/terms", component: TermsPage });
 const analysisRoute = createRoute({ getParentRoute: () => rootRoute, path: "/analysis", component: AnalysisPage });
+const studentProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/student/profile", component: StudentProfilePage });
+const advisorProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/advisor/profile", component: AdvisorProfilePage });
 
 const collegePredictorRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -79,6 +83,8 @@ const routeTree = rootRoute.addChildren([
   studentSessionDetailRoute,
   advisorDashboardRoute,
   advisorSessionDetailRoute,
+  studentProfileRoute,
+  advisorProfileRoute,
   analysisRoute,
   testAccountRoute,
 ]);
