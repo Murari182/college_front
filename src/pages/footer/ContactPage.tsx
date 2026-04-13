@@ -81,12 +81,12 @@ Reach out to our support team, and we'll assist you as quickly as possible.`;
   const lines = content.split("\n");
 
   const creators = [
-    { id: 1, src: "figures/1.jpeg", name: "Karri Kishan", position: "Founder & CEO" },
-    { id: 2, src: "figures/2.jpeg", name: "Bhargav Venkat", position: "Co-Founder and Founding Engineer" },
-    { id: 3, src: "figures/3.jpeg", name: "Yaswanth Buduru", position: "CTO and Co-Founder" },
-    { id: 4, src: "figures/4.jpeg", name: "Sai Badrishwar S S", position: "CMO" },
+    { id: 1, src: "/figures/1.jpeg", name: "Karri Kishan", position: "Founder & CEO" },
+    { id: 2, src: "/figures/2.jpeg", name: "Bhargav Venkat", position: "Co-Founder and Founding Engineer" },
+    { id: 3, src: "/figures/3.jpeg", name: "Yaswanth Buduru", position: "CTO and Co-Founder" },
+    { id: 4, src: "/figures/4.jpeg", name: "Sai Badrishwar S S", position: "CMO" },
     
-    { id: 6, src: "figures/6.jpeg", name: "Mukunda Ramachary", position: "CIO" },
+    { id: 6, src: "/figures/6.jpeg", name: "Mukunda Ramachary", position: "CIO" },
   ];
 
   // Placeholder data for the rest of your team
@@ -121,10 +121,12 @@ Reach out to our support team, and we'll assist you as quickly as possible.`;
           
           <div className="relative flex items-center justify-center h-64 w-full">
             {creators.map((creator, i) => {
+              const isActive = i === activeIndex;
+
               // Determine position and styling based on active index
               let positionClass = "translate-x-[200%] opacity-0 scale-50 z-0"; // Hidden by default
               
-              if (i === activeIndex) {
+              if (isActive) {
                 // Center Image (Active)
                 positionClass = "translate-x-0 opacity-100 scale-100 z-10 blur-none";
               } else if (i === (activeIndex - 1 + creators.length) % creators.length) {
@@ -143,6 +145,12 @@ Reach out to our support team, and we'll assist you as quickly as possible.`;
                   <img 
                     src={creator.src} 
                     alt={creator.name} 
+                    loading={isActive ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchPriority={isActive ? "high" : "low"}
+                    width={160}
+                    height={160}
+                    sizes="(max-width: 640px) 128px, 160px"
                     className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover mb-4 border-4 border-yellow-500 shadow-lg shadow-yellow-500/50"
                   />
                   <h3 className="text-xl font-semibold text-foreground">{creator.name}</h3>
