@@ -104,7 +104,7 @@ export function ProfileDropdown({ role, userName, avatarUrl }: ProfileDropdownPr
           {/* Avatar with improved visibility */}
           <Avatar className={`h-9 w-9 ring-2 ${showRing ? "ring-transparent" : "ring-white/20"} transition-all duration-300 group-hover:ring-white/40 group-active:scale-95 shadow-lg shadow-black/40`}>
             <AvatarImage src={avatarUrl} alt={userName} />
-            <AvatarFallback className={role === "student" ? "bg-neon-teal/20 text-neon-teal font-bold" : "bg-neon-orange/20 text-neon-orange font-bold"}>
+            <AvatarFallback className={role === "student" ? "bg-navy text-white font-black" : "bg-mango text-white font-black"}>
               {(userName || "U").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -118,7 +118,7 @@ export function ProfileDropdown({ role, userName, avatarUrl }: ProfileDropdownPr
         </div>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64 glass-strong border-border mt-3 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+      <DropdownMenuContent align="end" className="w-64 bg-white border border-slate-200 shadow-2xl rounded-2xl mt-3 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
         <DropdownMenuLabel className="px-3 py-2">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-bold text-foreground truncate">{userName || "User"}</span>

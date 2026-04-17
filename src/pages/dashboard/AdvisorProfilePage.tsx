@@ -9,19 +9,10 @@ import {
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X } from "lucide-react";
-import { motion } from "motion/react";
+import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "249", "299", "399", "499", "599", "999"];
-
-function parsePreferredTimezoneSlots(slots: string[] | undefined) {
-  const parsed = (slots || []).map((slot) => {
-    const [from = "", to = ""] = slot.split(" - ").map((v) => v.trim());
-    return { from, to };
-  });
-  if (parsed.length >= 4) return parsed;
-  return [...parsed, ...Array.from({ length: 4 - parsed.length }, () => ({ from: "", to: "" }))];
-}
 
 export default function AdvisorProfilePage() {
   const navigate = useNavigate();
@@ -46,7 +37,7 @@ export default function AdvisorProfilePage() {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    const unsub = onAuthStateChanged(auth, (user) => {
+    return onAuthStateChanged(auth, (user) => {
       if (user) {
         setAuthUser(user);
         fetchProfile(user);
@@ -54,7 +45,6 @@ export default function AdvisorProfilePage() {
         navigate({ to: "/auth/signin" });
       }
     });
-    return unsub;
   }, [navigate]);
 
   const fetchProfile = async (user: FirebaseUser) => {
@@ -72,7 +62,7 @@ export default function AdvisorProfilePage() {
         current_study_year: prof.current_study_year?.toString() || "",
       });
     } catch (err) {
-      console.error("Failed to fetch advisor profile:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -106,8 +96,8 @@ export default function AdvisorProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader className="animate-spin text-neon-orange" size={32} />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader className="animate-spin text-slate-900" size={32} />
       </div>
     );
   }
@@ -115,48 +105,84 @@ export default function AdvisorProfilePage() {
   const effectiveYear = advisor ? computeEffectiveStudyYear(advisor) : 1;
 
   return (
-    <div className="relative min-h-screen pt-24 pb-16 px-4 sm:px-6">
+    <div className="relative min-h-screen bg-background pt-32 pb-24 px-4 sm:px-6">
+      {/* Background Ambience */}
+      <div className="fixed inset-0 pointer-events-none opacity-20 overflow-hidden">
+        <div className="orb-1 absolute top-[-5%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-slate-200 blur-[140px]" />
+        <div className="orb-2 absolute bottom-[-10%] left-[-5%] w-[40vw] h-[40vw] rounded-full bg-[#F5A623]/10 blur-[120px]" />
+      </div>
+
       <div className="max-w-4xl mx-auto relative z-10">
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-          className="glass rounded-3xl border border-border/50 p-6 sm:p-10"
-        >
-          <div className="flex flex-col sm:flex-row items-center gap-6 mb-10">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-neon-orange to-orange-400 flex items-center justify-center text-4xl font-bold text-white shadow-xl shadow-neon-orange/20">
-              {advisor?.name?.split(" ").map(n => n[0]).join("")}
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="glass-dashboard rounded-[3rem] p-8 sm:p-12">
+          
+          {/* Header Profile */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-10 mb-12 border-b border-slate-100 pb-12">
+            <div className="shrink-0 relative">
+               <div className="w-40 h-40 rounded-[3rem] bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-4 border-white shadow-2xl relative overflow-hidden group">
+                 <span className="text-5xl font-display font-bold text-slate-800">
+                    {advisor?.name?.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                 </span>
+                 <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera size={24} className="text-white" />
+                 </div>
+               </div>
+               {advisor?.college_id_front_key && (
+                 <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-2xl border-4 border-white shadow-lg">
+                   <ShieldCheck size={20} />
+                 </div>
+               )}
             </div>
-            <div className="text-center sm:text-left">
-              <h1 className="text-3xl font-display font-bold text-foreground mb-1">{advisor?.name}</h1>
-              <p className="text-muted-foreground font-medium">{advisor?.detected_college} | {advisor?.branch}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${advisor?.college_id_front_key ? "bg-neon-teal/10 text-neon-teal border border-neon-teal/20" : "bg-neon-orange/10 text-neon-orange border border-neon-orange/20"}`}>
-                  {advisor?.college_id_front_key ? "Verified Advisor" : "Unverified"}
-                </span>
-              </div>
+
+            <div className="text-center sm:text-left flex-1 min-w-0">
+               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-3">
+                 <span className={`stat-badge ${advisor?.college_id_front_key ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border px-3 py-1 flex items-center gap-1`}>
+                    {advisor?.college_id_front_key ? <ShieldCheck size={10} /> : <AlertTriangle size={10} />}
+                    {advisor?.college_id_front_key ? 'IDENTITY VERIFIED' : 'ACTION REQUIRED'}
+                 </span>
+                 <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Expert Advisor Since 2024</span>
+               </div>
+               <h1 className="text-4xl font-display font-bold text-slate-900 mb-3 tracking-tight truncate">{advisor?.name}</h1>
+               <p className="text-lg font-medium text-slate-500 mb-4">{advisor?.detected_college} • <span className="text-slate-900">{advisor?.branch}</span></p>
+               <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="flex items-center gap-1.5"><Mail size={14} className="text-[#F5A623]" /> {authUser?.email?.split('@')[0]}</span>
+                  <span className="flex items-center gap-1.5 font-display text-slate-700">{formatStudyYearLabel(effectiveYear)} Student</span>
+               </div>
             </div>
+
+            {!isEditing && (
+              <button onClick={() => setIsEditing(true)} className="dashboard-tab-btn bg-slate-900 text-white shadow-xl shadow-slate-900/20 hover:bg-slate-800">
+                <Edit3 size={16} /> Edit Profile
+              </button>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Basic Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            {/* Left Column: Basic Details */}
+            <div className="space-y-10">
+              <div className="flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-[#F5A623] rounded-full" />
+                <h3 className="text-2xl font-display font-bold text-slate-900">Personal Information</h3>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {[
-                  { label: "Full Name", key: "name", type: "text" },
-                  { label: "Branch", key: "branch", type: "text" },
-                  { label: "Phone", key: "phone", type: "tel" },
-                  { label: "State", key: "state", type: "text" },
+                  { label: "Full Name", key: "name", type: "text", icon: User },
+                  { label: "Phone Number", key: "phone", type: "tel", icon: Phone },
+                  { label: "Current State", key: "state", type: "text", icon: MapPin },
+                  { label: "Focus Branch", key: "branch", type: "text", icon: GraduationCap },
                 ].map(field => (
-                  <div key={field.key} className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase px-1">{field.label}</label>
+                  <div key={field.key} className="flex flex-col gap-2.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                       <field.icon size={12} strokeWidth={2.5} />
+                       {field.label}
+                    </label>
                     {isEditing ? (
                       <input 
                         value={editForm[field.key as keyof typeof editForm]} 
                         onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                        className="bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-neon-orange transition-all"
+                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
                       />
                     ) : (
-                      <div className="bg-background/30 border border-border/50 rounded-xl px-4 py-2.5 text-sm text-foreground">
+                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
                         {editForm[field.key as keyof typeof editForm] || "Not provided"}
                       </div>
                     )}
@@ -165,113 +191,128 @@ export default function AdvisorProfilePage() {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-foreground">Session Settings</h3>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase px-1">Consultation Fee</label>
+            {/* Right Column: Professional Settings */}
+            <div className="space-y-10">
+              <div className="flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-slate-900 rounded-full" />
+                <h3 className="text-2xl font-display font-bold text-slate-900">Service Settings</h3>
+              </div>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <IndianRupee size={12} strokeWidth={2.5} />
+                     Session Hourly Rate
+                  </label>
                   {isEditing ? (
-                    <select
-                      value={editForm.session_price}
-                      onChange={e => setEditForm(p => ({...p, session_price: e.target.value}))}
-                      className="bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-neon-orange transition-all cursor-pointer"
-                    >
-                      {ADVISOR_PRICE_OPTIONS.map(price => (
-                        <option key={price} value={price}>Rs {price} per session</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={editForm.session_price}
+                        onChange={e => setEditForm(p => ({...p, session_price: e.target.value}))}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:bg-white focus:border-[#F5A623]/30 appearance-none cursor-pointer"
+                      >
+                        {ADVISOR_PRICE_OPTIONS.map(price => (
+                          <option key={price} value={price}>₹{price} / 60 Minute Session</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+                    </div>
                   ) : (
-                    <div className="bg-background/30 border border-border/50 rounded-xl px-4 py-2.5 text-sm text-foreground flex justify-between items-center">
-                      <span>Rs {advisor?.session_price || "0"}</span>
-                      <IndianRupee size={14} className="text-neon-orange" />
+                    <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-[#F5A623] flex justify-between items-center">
+                      <span>₹{advisor?.session_price || "0"} <span className="text-slate-400 font-medium">per hour</span></span>
+                      <IndianRupee size={14} />
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase px-1">Study Year</label>
-                  <div className="bg-background/20 border border-border/50 rounded-xl px-4 py-2.5 text-sm text-muted-foreground italic">
-                    {formatStudyYearLabel(effectiveYear)}
-                  </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <Clock size={12} strokeWidth={2.5} />
+                     Professional Bio
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      value={editForm.bio}
+                      onChange={e => setEditForm(p => ({...p, bio: e.target.value}))}
+                      rows={5}
+                      className="bg-slate-50 border border-slate-100 rounded-3xl px-6 py-5 text-sm font-medium outline-none focus:bg-white focus:border-slate-900/10 transition-all resize-none leading-relaxed"
+                      placeholder="Showcase your experience..."
+                    />
+                  ) : (
+                    <div className="bg-white border border-slate-100 rounded-3xl px-6 py-5 text-sm text-slate-500 font-medium leading-relaxed italic">
+                      "{editForm.bio || "No professional bio provided yet. Your bio helps students understand your expertise."}"
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase px-1">Professional Bio</label>
-                {isEditing ? (
-                  <textarea
-                    value={editForm.bio}
-                    onChange={e => setEditForm(p => ({...p, bio: e.target.value}))}
-                    rows={4}
-                    className="bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-neon-orange transition-all resize-none"
-                    placeholder="Tell students about your experience..."
-                  />
-                ) : (
-                  <div className="bg-background/30 border border-border/50 rounded-xl px-4 py-2.5 text-sm text-foreground min-h-[100px] leading-relaxed">
-                    {editForm.bio || "No bio provided yet."}
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-border/50">
-            <h3 className="text-lg font-bold text-foreground mb-6">Identity Verification</h3>
+          {/* Identity Verification Section - Redesigned as a featured card */}
+          <div className="mt-16 pt-12 border-t border-slate-100">
+            <h3 className="text-2xl font-display font-bold text-slate-900 mb-8 flex items-center gap-3">
+               <ShieldCheck size={28} className="text-[#F5A623]" /> Identity Documents
+            </h3>
+            
             {!advisor?.college_id_front_key ? (
-              <div className="bg-neon-orange/5 border border-neon-orange/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6">
-                <div className="w-12 h-12 rounded-full bg-neon-orange/10 flex items-center justify-center text-neon-orange shrink-0">
-                  <AlertTriangle size={24} />
+              <div className="bg-slate-900 text-white rounded-[2.5rem] p-8 sm:p-10 flex flex-col md:flex-row items-center gap-10 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#F5A623]/10 blur-[90px] rounded-full -mr-32 -mt-32" />
+                <div className="w-16 h-16 rounded-3xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
+                  <Upload size={32} className="text-[#F5A623]" />
                 </div>
-                <div className="flex-1 text-center md:text-left">
-                  <p className="font-bold text-foreground">Upload your College ID</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    To start accepting sessions, please upload the front and back of your official college ID card.
+                <div className="flex-1 text-center md:text-left relative z-10">
+                  <p className="text-2xl font-display font-bold mb-2">Verification Required</p>
+                  <p className="text-slate-400 font-medium leading-relaxed">
+                    To maintain trust, all advisors must upload their official college ID. This is not shared publicly.
                   </p>
                 </div>
+                
                 {isEditing ? (
-                  <div className="flex gap-3">
-                    <label className="cursor-pointer bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-dashed border-border transition-all flex flex-col items-center">
-                      <Upload size={16} className="mb-1" />
-                      <span className="text-[10px] font-bold uppercase">{frontFile ? "Front Added" : "Add Front"}</span>
+                  <div className="flex gap-4 relative z-10">
+                    <label className="cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-4 rounded-2xl border border-dashed border-white/20 transition-all flex flex-col items-center gap-1">
+                      <Camera size={20} className={frontFile ? "text-emerald-400" : "text-slate-300"} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">{frontFile ? "Front Ready" : "Front Side"}</span>
                       <input type="file" className="hidden" onChange={e => setFrontFile(e.target.files?.[0] || null)} />
                     </label>
-                    <label className="cursor-pointer bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-dashed border-border transition-all flex flex-col items-center">
-                      <Upload size={16} className="mb-1" />
-                      <span className="text-[10px] font-bold uppercase">{backFile ? "Back Added" : "Add Back"}</span>
+                    <label className="cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-4 rounded-2xl border border-dashed border-white/20 transition-all flex flex-col items-center gap-1">
+                      <Camera size={20} className={backFile ? "text-emerald-400" : "text-slate-300"} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">{backFile ? "Back Ready" : "Back Side"}</span>
                       <input type="file" className="hidden" onChange={e => setBackFile(e.target.files?.[0] || null)} />
                     </label>
                   </div>
                 ) : (
-                    <button onClick={() => setIsEditing(true)} className="bg-neon-orange text-black px-4 py-2 rounded-xl text-sm font-bold">Start Upload</button>
+                    <button onClick={() => setIsEditing(true)} className="bg-[#F5A623] text-slate-900 px-8 py-4 rounded-2xl text-sm font-bold shadow-xl shadow-[#F5A623]/20 hover:scale-105 transition-transform">Complete Setup</button>
                 )}
               </div>
             ) : (
-              <div className="bg-neon-teal/5 border border-neon-teal/20 rounded-2xl p-6 flex items-center gap-6">
-                <div className="w-12 h-12 rounded-full bg-neon-teal/10 flex items-center justify-center text-neon-teal">
-                  <CheckCircle size={24} />
+              <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-10 flex items-center gap-8 shadow-sm">
+                <div className="w-16 h-16 rounded-[1.5rem] bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                  <ShieldCheck size={32} />
                 </div>
                 <div>
-                  <p className="font-bold text-foreground">Verification Documents Submitted</p>
-                  <p className="text-sm text-muted-foreground mt-1">Your ID is being reviewed by our team. You can still update your basic info above.</p>
+                  <p className="text-2xl font-display font-bold text-slate-900">Expert Identification Secure</p>
+                  <p className="text-slate-500 font-medium mt-1">Your documents are active and verified. You're fully authorized to provide guidance.</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="mt-10 flex gap-4">
-            {isEditing ? (
-              <>
-                <button onClick={handleSave} disabled={saving} className="flex-1 bg-neon-orange hover:bg-neon-orange/90 text-black font-bold py-3.5 rounded-2xl shadow-lg shadow-neon-orange/20 flex items-center justify-center gap-2">
-                  {saving ? <Loader size={20} className="animate-spin" /> : "Save Changes"}
+          <div className="mt-16 flex gap-4">
+            <AnimatePresence mode="wait">
+              {isEditing ? (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex gap-4 w-full">
+                  <button onClick={handleSave} disabled={saving} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-display font-bold h-16 rounded-2xl shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2">
+                    {saving ? <Loader size={20} className="animate-spin" /> : <><CheckCircle size={20} /> Update Professional Profile</>}
+                  </button>
+                  <button onClick={() => { setIsEditing(false); setFrontFile(null); setBackFile(null); }} disabled={saving} className="px-10 bg-white border border-slate-200 text-slate-400 font-display font-bold h-16 rounded-2xl hover:bg-slate-50">
+                    Discard
+                  </button>
+                </motion.div>
+              ) : (
+                <button onClick={() => setIsEditing(true)} className="w-full bg-slate-50 border-2 border-slate-100 text-slate-600 hover:bg-white hover:border-[#F5A623]/30 font-display font-bold h-16 rounded-[2rem] transition-all flex items-center justify-center gap-2">
+                   Edit Profile & Settings
                 </button>
-                <button onClick={() => { setIsEditing(false); setFrontFile(null); setBackFile(null); }} disabled={saving} className="flex-1 bg-white/5 hover:bg-white/10 text-foreground font-bold py-3.5 rounded-2xl border border-border">
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setIsEditing(true)} className="w-full border border-neon-orange/40 text-neon-orange hover:bg-neon-orange/5 font-bold py-3.5 rounded-2xl transition-all">
-                Edit Professional Profile
-              </button>
-            )}
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>

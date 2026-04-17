@@ -53,10 +53,15 @@ export default {
           DEFAULT: "oklch(var(--card))",
           foreground: "oklch(var(--card-foreground))",
         },
-        neon: {
-          orange: "oklch(0.67 0.19 40)",
-          teal: "oklch(0.78 0.15 175)",
-          blue: "oklch(0.72 0.16 230)",
+        navy: {
+          DEFAULT: "#1E3A8A",
+          light: "#EFF6FF",
+          dark: "#172554",
+        },
+        mango: {
+          DEFAULT: "#F5A623",
+          light: "#FFFBEB",
+          dark: "#D97706",
         },
         chart: {
           1: "oklch(var(--chart-1))",
@@ -85,11 +90,10 @@ export default {
         "3xl": "2rem",
       },
       boxShadow: {
-        xs: "0 1px 2px 0 rgba(0,0,0,0.05)",
-        "neon-orange": "0 0 20px oklch(0.67 0.19 40 / 0.5), 0 0 60px oklch(0.67 0.19 40 / 0.2)",
-        "neon-teal": "0 0 20px oklch(0.78 0.15 175 / 0.5), 0 0 60px oklch(0.78 0.15 175 / 0.2)",
-        "neon-blue": "0 0 20px oklch(0.72 0.16 230 / 0.5), 0 0 60px oklch(0.72 0.16 230 / 0.2)",
-        "card-lift": "0 25px 50px -12px rgba(0,0,0,0.6), 0 0 30px oklch(0.67 0.19 40 / 0.08)",
+        xs: "0 1px 2px 0 rgba(0,0,0,0.04)",
+        "card-lift": "0 4px 24px 0 rgba(0,0,0,0.07), 0 1px 4px 0 rgba(0,0,0,0.04)",
+        "coral-lift": "0 4px 14px 0 oklch(0.64 0.18 35 / 0.20)",
+        "inset-border": "inset 0 0 0 1px rgba(0,0,0,0.08)",
       },
       keyframes: {
         "accordion-down": {

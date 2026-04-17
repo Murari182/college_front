@@ -1,21 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getMyAdvisorProfile,
   getMyBookings,
   type AdvisorProfileResponse,
   type BookingResponse,
-  updateMyAdvisorProfile,
-  uploadCollegeIdPairToS3,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift } from "lucide-react";
-import { motion } from "motion/react";
-import { useEffect } from "react";
+import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import AdvisorReferEarnPage from "./AdvisorReferEarnPage";
-
+import { BrandLogo } from "@/components/BrandLogo";
+import { fadeInUp, staggerContainer } from "@/lib/animations";
+import { ProfileDropdown } from "@/components/ProfileDropdown";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: TrendingUp },
@@ -24,33 +23,38 @@ const TABS = [
   { id: "refer", label: "Refer & Earn", icon: Gift },
 ];
 
-const HOURLY_TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12}:00 ${suffix}`;
-});
-
-const ADVISOR_PRICE_OPTIONS = [
-  "99",
-  "149",
-  "199",
-  "249",
-  "299",
-  "399",
-  "499",
-  "599",
-  "999",
+const STUDENT_COLORS = [
+  { bg: "bg-navy-light", text: "text-navy", border: "border-navy/10" },
+  { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
+  { bg: "bg-mango-light", text: "text-mango-dark", border: "border-mango/10" },
+  { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100" },
+  { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100" },
 ];
 
-function parsePreferredTimezoneSlots(
-  slots: string[] | undefined,
-): Array<{ from: string; to: string }> {
-  const parsed = (slots || []).map((slot) => {
-    const [from = "", to = ""] = slot.split(" - ").map((v) => v.trim());
-    return { from, to };
-  });
-  if (parsed.length >= 4) return parsed;
-  return [...parsed, ...Array.from({ length: 4 - parsed.length }, () => ({ from: "", to: "" }))];
+const getStudentTheme = (name: string) => {
+  const charCode = name.charCodeAt(0) || 0;
+  return STUDENT_COLORS[charCode % STUDENT_COLORS.length];
+};
+
+function StatCard({ label, value, icon: Icon, colorClass, delay = 0 }: { label: string; value: string | number; icon: any; colorClass: string; delay?: number }) {
+  return (
+    <motion.div
+      variants={fadeInUp}
+      transition={{ delay }}
+      className="card-solid rounded-2xl p-8 group"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-2.5 rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-mango transition-colors`}>
+          <Icon size={20} className={`${colorClass} group-hover:text-white transition-colors`} />
+        </div>
+        <div className="stat-badge bg-slate-50 text-slate-400">Monthly Avg</div>
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className={`text-4xl font-extrabold text-slate-900 group-hover:text-mango transition-colors`}>{value}</p>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function AdvisorDashboard() {
@@ -58,352 +62,319 @@ export default function AdvisorDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
   const [advisor, setAdvisor] = useState<AdvisorProfileResponse | null>(null);
-  const [savingProfile, setSavingProfile] = useState(false);
   const [sessionBookings, setSessionBookings] = useState<BookingResponse[]>([]);
-  const [editForm, setEditForm] = useState({
-    name: "",
-    branch: "",
-    phone: "",
-    state: "",
-    bio: "",
-    session_price: "",
-    current_study_year: "",
-    preferred_timezones: [{ from: "", to: "" }, { from: "", to: "" }, { from: "", to: "" }, { from: "", to: "" }],
-  });
-  const [frontFile, setFrontFile] = useState<File | null>(null);
-  const [backFile, setBackFile] = useState<File | null>(null);
-  useEffect(() => {
-    document.title = "Advisor Dashboard  -  Collegeconnects";
-  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    document.title = "Advisor Dashboard | CollegeConnects";
+    const auth = getFirebaseAuth();
+    return onAuthStateChanged(auth, u => {
+      setAuthUser(u);
+      if (u) {
+        loadProfile(u);
+      } else {
+        // Redirect if session lost
+        navigate({ to: "/auth/signin" });
+      }
+    });
+  }, []);
+
+  const loadProfile = async (u: FirebaseUser) => {
+    try {
+      const token = await u.getIdToken(true);
+      const profile = await getMyAdvisorProfile(token);
+      setAdvisor(profile);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (activeTab !== "sessions" || !authUser) return;
     const loadBookings = async () => {
-      const u = getFirebaseAuth().currentUser;
-      if (!u || activeTab !== "sessions") return;
       try {
-        const token = await u.getIdToken(true);
+        const token = await authUser.getIdToken(true);
         const list = await getMyBookings(token);
-        if (!cancelled) setSessionBookings(list);
+        setSessionBookings(list);
       } catch (e) {
-        if (!cancelled) setSessionBookings([]);
+        setSessionBookings([]);
       }
     };
     void loadBookings();
-    return () => {
-      cancelled = true;
-    };
-  }, [authUser?.uid, activeTab]);
-  useEffect(() => {
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, setAuthUser);
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    const loadProfile = async () => {
-      const u = getFirebaseAuth().currentUser;
-      if (!u) return;
-      try {
-        const token = await u.getIdToken(true);
-        const profile = await getMyAdvisorProfile(token);
-        if (!cancelled) setAdvisor(profile);
-      } catch (e) {}
-    };
-    void loadProfile();
-    return () => { cancelled = true; };
-  }, [authUser?.uid]);
+  }, [authUser, activeTab]);
 
-
-  const advisorName = advisor?.name || "Advisor";
-  const advisorCollege = advisor?.detected_college || "Not available";
-  const advisorBranch = advisor?.branch || "Not available";
-  const advisorStudyYearLabel = formatStudyYearLabel(computeEffectiveStudyYear(advisor ?? {}));
-  const advisorSessionPrice = Number(advisor?.session_price || "0");
-  const advisorBio = advisor?.bio || "No bio added yet.";
-  const advisorIsVerified = !!(advisor?.college_id_front_key && advisor?.college_id_back_key);
-  const advisorPreferredTimezones =
-    advisor?.preferred_timezones && advisor.preferred_timezones.length > 0
-      ? advisor.preferred_timezones.join(", ")
-      : "Not specified";
-
+  const welcomeName = advisor?.name?.split(' ')[0] || authUser?.displayName?.split(' ')[0] || "Advisor";
   const advisorTotalEarnings = advisor?.total_earnings ?? 0;
   const advisorTotalSessions = advisor?.total_sessions ?? 0;
   const advisorTotalStudents = advisor?.total_students ?? 0;
-  const mySessionBookings = sessionBookings; // backend already filters by advisor
-  const welcomeName =
-    advisorName ||
-    authUser?.displayName?.trim() ||
-    authUser?.email?.split("@")[0] ||
-    "Advisor";
+  const advisorIsVerified = !!(advisor?.college_id_front_key && advisor?.college_id_back_key);
 
   return (
-    <div className="min-h-screen bg-background pt-28 sm:pt-32 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto">
-
-        {/* Welcome header  -  brand lives in navbar; full width avoids overlap with tall stacked logo */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 w-full min-w-0"
-        >
-          <h1 className="text-3xl font-display font-bold text-foreground break-words">
-            Welcome back, <span className="gradient-text-orange">{welcomeName}</span>!
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage your sessions and connect with students</p>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
-                  ? "bg-neon-orange text-black"
-                  : "glass border border-border text-muted-foreground hover:text-foreground"
-                }`}
-            >
-              <tab.icon size={15} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-
-        {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              {[
-                { label: "Total Earnings", value: `Rs ${advisorTotalEarnings}`, icon: IndianRupee, color: "text-neon-orange" },
-                { label: "Total Sessions", value: advisorTotalSessions, icon: Calendar, color: "text-neon-teal" },
-                { label: "Students Helped", value: advisorTotalStudents, icon: Users, color: "text-neon-blue" },
-              ].map(stat => (
-                <div key={stat.label} className="glass rounded-2xl border border-border p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <stat.icon size={20} className={stat.color} />
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </div>
-                  <p className={`text-3xl font-display font-bold ${stat.color}`}>{stat.value}</p>
-                </div>
+    <div className="min-h-screen bg-[#F8FAFC] selection:bg-mango/10 selection:text-mango relative overflow-hidden">
+      {/* Topographic Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(#F5A623 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
+      
+      <div className="pt-32 pb-28 sm:pb-24 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="flex items-center gap-2 mb-3">
+               <span className="stat-badge bg-emerald-50 text-emerald-700 border-emerald-100 flex items-center gap-1 px-2.5">
+                <CheckCircle2 size={10} /> ADVISOR PORTAL
+              </span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
+              Welcome back, <span className="text-mango">{welcomeName}</span>
+            </h1>
+            <p className="text-slate-500 font-bold mt-2 max-w-md leading-relaxed">
+              Manage your availability and track your impact.
+            </p>
+          </motion.div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex gap-2 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto no-scrollbar">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "bg-[#F5A623] text-white shadow-lg shadow-mango/20"
+                      : "text-slate-500 hover:text-mango-dark hover:bg-slate-50"
+                  }`}
+                >
+                  <tab.icon size={14} strokeWidth={3} />
+                  {tab.label.toUpperCase()}
+                </button>
               ))}
             </div>
 
-            {/* Rating */}
-            <div className="glass rounded-2xl border border-border p-6 mb-6">
-              <div className="flex items-center gap-3">
-                <Star size={20} className="text-neon-orange fill-neon-orange" />
-                <p className="text-sm text-muted-foreground">Your Rating</p>
-              </div>
-              <p className="text-3xl font-bold text-neon-orange mt-2">5.0 / 5.0</p>
-              <p className="text-xs text-muted-foreground mt-1">Based on {advisorTotalSessions} sessions</p>
-            </div>
-
-            {/* Quick info */}
-            <div className="glass rounded-2xl border border-border p-6">
-              <h3 className="font-semibold text-foreground mb-4">Your Profile Summary</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: "College", value: advisorCollege },
-                  { label: "Branch", value: advisorBranch },
-                  { label: "Current Year", value: advisorStudyYearLabel },
-                  { label: "Session Price", value: advisorSessionPrice > 0 ? `Rs ${advisorSessionPrice}` : "Not set" },
-                  { label: "Verification Status", value: advisorIsVerified ? "Verified ✅" : "Verification Required ❌" },
-                  { label: "Preferred Time Slots", value: advisorPreferredTimezones },
-                ].map(item => (
-                  <div key={item.label} className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
-                    <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                    <p className="text-sm text-foreground font-medium">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* SESSIONS TAB */}
-        {activeTab === "sessions" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            {mySessionBookings.length === 0 ? (
-              <div className="glass rounded-2xl border border-border p-8 text-center">
-                <Calendar size={40} className="text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-foreground mb-2">No sessions booked yet</h3>
-                <p className="text-muted-foreground">Students will book sessions with you once your profile is live!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mySessionBookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      navigate({
-                        to: "/advisor/session/$bookingId",
-                        params: { bookingId: booking.id },
-                      })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate({
-                          to: "/advisor/session/$bookingId",
-                          params: { bookingId: booking.id },
-                        });
-                      }
-                    }}
-                    className="glass rounded-2xl border border-border p-5 cursor-pointer hover:border-neon-orange/50 transition-colors"
-                  >
-                    <p className="text-xs text-muted-foreground mb-1">Student</p>
-                    <p className="text-lg font-semibold text-foreground">{booking.student_name}</p>
-                    <p className="text-sm text-muted-foreground mb-3">{booking.student_email}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-background/50 rounded-xl px-3 py-2 border border-border/60">
-                        <p className="text-[11px] text-muted-foreground">Session price</p>
-                        <p className="text-sm font-medium text-neon-orange">
-                          {booking.session_price ? `Rs ${booking.session_price}` : " - "}
-                        </p>
-                      </div>
-                      <div className="bg-background/50 rounded-xl px-3 py-2 border border-border/60">
-                        <p className="text-[11px] text-muted-foreground">Selected slot</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {booking.selected_slot || " - "}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Status: {booking.status || "pending"} | Booked {booking.created_at ? new Date(booking.created_at).toLocaleDateString() : "unknown"}
-                    </p>
-                  </div>
-                ))}
+            {authUser && (
+              <div className="hidden sm:flex items-center gap-4 pl-4 border-l border-slate-200">
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Advisor Access</p>
+                  <p className="text-sm font-black text-slate-900 leading-tight truncate max-w-[120px]">{welcomeName}</p>
+                </div>
+                <ProfileDropdown role="advisor" userName={authUser.displayName || advisor?.name} avatarUrl={authUser.photoURL || undefined} />
               </div>
             )}
-          </motion.div>
-        )}
+          </div>
+        </header>
 
-        {/* EARNINGS TAB (Wallet) */}
-        {activeTab === "earnings" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            {/* Wallet Card */}
-            <div className="glass rounded-3xl border border-border overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-neon-orange/10 blur-[100px] rounded-full -mr-32 -mt-32" />
-              <div className="p-8 sm:p-10 relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-neon-orange/20 flex items-center justify-center">
-                      <Wallet size={24} className="text-neon-orange" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">My Wallet</h3>
-                      <p className="text-sm text-muted-foreground">Manage your earnings and payouts</p>
-                    </div>
-                  </div>
-                  <div className="hidden sm:block">
-                    <span className="px-3 py-1 rounded-full bg-neon-teal/10 text-neon-teal text-xs font-medium border border-neon-teal/20">
-                      Active
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Available Balance (Net)</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-display font-bold text-foreground">Rs {Math.floor(advisorTotalEarnings * 0.7)}</span>
-                      <span className="text-muted-foreground text-sm font-medium">INR</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-2 italic">* Balance after 30% platform fee</p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button className="flex-1 inline-flex items-center justify-center gap-2 bg-neon-orange hover:bg-neon-orange/90 text-black font-semibold rounded-2xl h-14 transition-all shadow-lg shadow-neon-orange/20 group">
-                      <ArrowUpRight size={20} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                      Withdraw Money
-                    </button>
-                    <button className="flex-1 inline-flex items-center justify-center gap-2 glass border border-border hover:bg-white/5 text-foreground font-semibold rounded-2xl h-14 transition-all">
-                      <History size={20} />
-                      Payout History
-                    </button>
-                  </div>
-                </div>
+        <AnimatePresence mode="wait">
+          {activeTab === "overview" && (
+            <motion.div key="overview" variants={staggerContainer()} initial="initial" animate="animate" exit={{ opacity: 0, y: -10 }} className="space-y-10">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <StatCard label="Total Earnings" value={`₹${advisorTotalEarnings}`} icon={IndianRupee} colorClass="text-emerald-600" delay={0.1} />
+                <StatCard label="Sessions" value={advisorTotalSessions} icon={Calendar} colorClass="text-orange-600" delay={0.2} />
+                <StatCard label="Rating" value="5.0 / 5" icon={Star} colorClass="text-amber-500" delay={0.3} />
               </div>
 
-              {/* Quick Access Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-border">
-                {[
-                  { label: "Pending Payout", value: "Rs 0", color: "text-muted-foreground" },
-                  { label: "Total Tax Paid", value: "Rs 0", color: "text-muted-foreground" },
-                  { label: "Last Payout", value: "None", color: "text-muted-foreground" },
-                  { label: "Platform Fee", value: "30%", color: "text-neon-teal" },
-                ].map((stat, idx) => (
-                  <div key={idx} className="p-4 border-r border-border last:border-r-0 text-center sm:text-left">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{stat.label}</p>
-                    <p className={`text-sm font-bold ${stat.color}`}>{stat.value}</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 card-solid rounded-[2rem] p-8 flex flex-col sm:flex-row gap-8 items-center">
+                  <div className="w-28 h-28 rounded-3xl bg-slate-50 border border-slate-200 flex items-center justify-center text-3xl font-bold text-slate-800 shrink-0">
+                    {welcomeName.charAt(0)}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Transactions Section */}
-            <div className="glass rounded-3xl border border-border p-6 sm:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-foreground">Recent Transactions</h3>
-                <button className="text-xs text-neon-orange hover:underline font-medium">View All</button>
-              </div>
-
-              {advisorTotalEarnings === 0 ? (
-                <div className="py-12 text-center">
-                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-border/50">
-                    <IndianRupee size={24} className="text-muted-foreground" />
-                  </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">No transactions yet</h4>
-                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                    Your earnings will show here once students start booking sessions with you.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* We could map over real bookings that are 'accepted' or 'paid' here */}
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-border/50 hover:bg-white/10 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-neon-teal/20 flex items-center justify-center text-neon-teal">
-                        <TrendingUp size={18} />
+                  <div className="flex-1 text-center sm:text-left">
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-4">
+                      <span className={`stat-badge ${advisorIsVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'} px-3`}>
+                        {advisorIsVerified ? 'IDENTITY VERIFIED' : 'PENDING REVIEW'}
+                      </span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 mb-1">{advisor?.name}</p>
+                    <p className="text-sm text-slate-500 font-bold mb-5">{advisor?.detected_college} • {advisor?.branch}</p>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Session Rate</p>
+                        <p className="text-lg font-bold text-slate-900">₹{advisor?.session_price}/hr</p>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Session Credit</p>
-                        <p className="text-xs text-muted-foreground">From Recent Bookings</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time Availability</p>
+                        <p className="text-lg font-bold text-slate-900">{advisor?.preferred_timezones?.length || 0} Slots</p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-neon-teal">+ Rs {advisorTotalEarnings}</p>
-                      <p className="text-[10px] text-muted-foreground">Completed</p>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Payout Information Alert */}
-            <div className="bg-neon-teal/5 border border-neon-teal/20 rounded-2xl p-4 flex gap-4">
-              <TrendingUp size={20} className="text-neon-teal shrink-0" />
-              <div className="text-sm">
-                <p className="text-neon-teal font-semibold">Automatic Weekly Payouts</p>
-                <p className="text-muted-foreground mt-0.5">
-                  Your earnings are processed every Monday and credited to your linked bank account within 2-3 business days.
-                </p>
+                <div className="card-solid rounded-[2rem] p-8 flex flex-col justify-between bg-mango text-white border-none shadow-xl shadow-mango/10">
+                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
+                     <Users size={22} className="text-white" />
+                   </div>
+                   <div>
+                     <p className="text-5xl font-extrabold text-white">{advisorTotalStudents}</p>
+                     <p className="text-lg font-bold text-mango-light mt-1">Students Guided</p>
+                     <p className="text-xs text-white/80 mt-4 leading-relaxed font-bold">
+                       Great job! Your profile response rate is currently in the <span className="text-white font-black underline decoration-white/30 underline-offset-4">top 5%</span>.
+                     </p>
+                   </div>
+                </div>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === "sessions" && (
+            <motion.div key="sessions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+               <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="text-3xl font-extrabold text-slate-900">Booked Sessions</h2>
+                  <p className="text-slate-500 font-bold mt-1">Accept and manage your mentor calls.</p>
+                </div>
+              </div>
+
+              {sessionBookings.length === 0 ? (
+                <div className="text-center py-24 card-solid rounded-[2.5rem]">
+                   <Calendar size={40} className="text-slate-200 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-900">No active sessions</h3>
+                  <p className="text-slate-500 font-medium">New student bookings will appear here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {sessionBookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      onClick={() => navigate({ to: "/advisor/session/$bookingId", params: { bookingId: booking.id } })}
+                      className="card-solid group rounded-2xl p-6 cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center gap-4">
+                           <div className={`w-11 h-11 rounded-xl ${getStudentTheme(booking.student_name || "S").bg} border ${getStudentTheme(booking.student_name || "S").border} flex items-center justify-center font-black ${getStudentTheme(booking.student_name || "S").text}`}>
+                             {booking.student_name?.charAt(0)}
+                           </div>
+                           <div>
+                             <p className="text-sm font-black text-slate-900 group-hover:text-mango transition-colors">{booking.student_name}</p>
+                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{booking.student_email?.split('@')[0]}</p>
+                           </div>
+                        </div>
+                        <span className="stat-badge bg-orange-50 text-orange-700 border-orange-100">{booking.status}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Payout</p>
+                          <p className="text-sm font-bold text-slate-900">₹{booking.session_price}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Time</p>
+                          <p className="text-sm font-bold text-slate-900 line-clamp-1">{booking.selected_slot}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-4">
+                        <span>EST. SESSION COMPLETION</span>
+                        <div className={`w-8 h-8 rounded-lg ${getStudentTheme(booking.student_name || "S").bg} ${getStudentTheme(booking.student_name || "S").text} flex items-center justify-center transition-all group-hover:bg-mango group-hover:text-white`}>
+                          <ArrowRight size={16} strokeWidth={3} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    </div>
+                   ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === "earnings" && (
+            <motion.div key="earnings" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-8">
+               <div className="card-solid rounded-[2.5rem] p-10 bg-slate-900 text-white overflow-hidden relative border-none">
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-12">
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-white">
+                          <Wallet size={28} strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold">Your Wallet</h3>
+                          <p className="text-sm text-slate-400 font-medium tracking-tight">Financial settlement and reports.</p>
+                        </div>
+                      </div>
+                      <span className="px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-widest border border-emerald-500/30">PENDING PAYOUTS: ₹0</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">Escrow Balance (Net)</p>
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-6xl font-extrabold text-white tracking-tight">₹{Math.floor(advisorTotalEarnings * 0.7)}</span>
+                          <span className="text-slate-500 text-xl font-bold uppercase tracking-widest">INR</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-5 font-medium">* Settlement after 30% platform fee coverage.</p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-4 mb-2">
+                        <button className="flex-1 btn-primary bg-mango hover:bg-mango-dark border-none px-8 py-5 text-base">
+                          Transfer to Bank
+                        </button>
+                        <button className="flex-1 btn-secondary bg-white/5 border-white/10 hover:bg-white/10 text-white px-8 py-5 text-base font-bold">
+                          History
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="card-solid rounded-[2rem] p-10">
+                    <h4 className="text-lg font-bold text-slate-900 mb-8">Payout Information</h4>
+                    <div className="space-y-5">
+                       {[
+                         { l: "Platform Retention", v: "30%", c: "text-red-600" },
+                         { l: "Taxes & Duties", v: "Inclusive", c: "text-slate-900" },
+                         { l: "Settlement Cycle", v: "Weekly (Mon)", c: "text-orange-600" },
+                         { l: "Payment Status", v: "Linked Account", c: "text-emerald-600" },
+                       ].map(i => (
+                         <div key={i.l} className="flex justify-between items-center py-4 border-b border-slate-50 last:border-0">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{i.l}</p>
+                           <p className={`text-sm font-extrabold ${i.c}`}>{i.v}</p>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                  
+                  <div className="card-solid rounded-[2rem] p-10 flex flex-col items-center justify-center text-center">
+                     <TrendingUp size={48} className="text-slate-100 mb-6" />
+                     <h4 className="text-lg font-bold text-slate-900 mb-2">Grow your earnings</h4>
+                     <p className="text-sm text-slate-500 font-medium max-w-xs mx-auto mb-8">Complete more sessions to unlock lower platform fees and priority payouts.</p>
+                     <button onClick={() => setActiveTab('refer')} className="text-orange-600 font-bold text-sm hover:underline">Refer students to earn more</button>
+                  </div>
+               </div>
+            </motion.div>
+          )}
+
+          {activeTab === "refer" && (
+            <motion.div key="refer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+               <AdvisorReferEarnPage />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Mobile Sticky Bottom Nav (hidden on sm+) ── */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-around px-2 py-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all ${
+                activeTab === tab.id ? "text-mango-dark" : "text-slate-400"
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                activeTab === tab.id ? "bg-mango/10" : ""
+              }`}>
+                <tab.icon size={20} strokeWidth={activeTab === tab.id ? 3 : 2} />
+              </div>
+              <span className={`text-[10px] font-black tracking-wide ${
+                activeTab === tab.id ? "text-mango-dark" : "text-slate-400"
+              }`}>{tab.label.split(" ")[0].toUpperCase()}</span>
+            </button>
+          ))}
+
+          {/* Profile avatar on mobile */}
+          {authUser && (
+            <div className="flex flex-col items-center gap-1">
+              <ProfileDropdown
+                role="advisor"
+                userName={authUser.displayName || advisor?.name}
+                avatarUrl={authUser.photoURL || undefined}
+              />
+              <span className="text-[10px] font-black text-slate-400 tracking-wide">ME</span>
             </div>
-          </motion.div>
-        )}
-
-        {/* REFER TAB */}
-        {activeTab === "refer" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <AdvisorReferEarnPage />
-          </motion.div>
-        )}
-
-
+          )}
+        </div>
+        <div className="h-safe-area-inset-bottom" />
       </div>
     </div>
   );

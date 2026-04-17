@@ -68,10 +68,10 @@ export default function AdvisorReferEarnPage() {
       <p className="text-sm text-muted-foreground">
         Refer new advisors and earn 3% from their next 5 sessions.
       </p>
-      <div className="rounded-xl border border-neon-orange/35 bg-neon-orange/5 p-4 sm:p-5">
+      <div className="rounded-2xl border border-mango/10 bg-mango-light p-5 sm:p-6 transition-all hover:shadow-lg hover:shadow-mango/5 group">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-orange/15 text-neon-orange">
-            <IndianRupee className="h-5 w-5" aria-hidden />
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm text-mango group-hover:scale-110 transition-transform">
+            <IndianRupee className="h-6 w-6" aria-hidden />
           </span>
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -105,9 +105,9 @@ export default function AdvisorReferEarnPage() {
           <p className="text-lg font-semibold text-foreground">{summary?.total_referrals ?? 0}</p>
         </div>
       </div>
-      <div className="bg-background/50 rounded-xl p-3 border border-border/50">
-        <p className="text-xs text-muted-foreground mb-1">Your referral code</p>
-        <p className="text-sm font-medium text-neon-orange">{summary?.referral_code || "Loading..."}</p>
+      <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Your Professional Referral Code</p>
+        <p className="text-sm font-black text-mango">{summary?.referral_code || "GENERATE_CODE"}</p>
       </div>
       <div className="space-y-2">
         <label className="text-sm text-muted-foreground">Referred advisor email</label>
@@ -118,14 +118,14 @@ export default function AdvisorReferEarnPage() {
           placeholder="newadvisor@college.edu"
           autoComplete="email"
           disabled={busy}
-          className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-orange transition-colors disabled:opacity-60"
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-mango transition-all disabled:opacity-60 shadow-sm"
         />
       </div>
       <Button
         type="button"
         onClick={handleCreate}
         disabled={busy}
-        className="bg-neon-orange hover:bg-neon-orange/90 text-black"
+        className="w-full bg-mango hover:bg-mango-dark text-white font-black uppercase tracking-widest h-14 rounded-2xl shadow-xl shadow-mango/10 transition-all active:scale-[0.98]"
       >
         {busy ? "Submitting..." : "Record referral"}
       </Button>

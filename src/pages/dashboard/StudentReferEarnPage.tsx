@@ -69,10 +69,10 @@ export default function StudentReferEarnPage() {
       <p className="text-sm text-muted-foreground">
         Refer users and get 10% discount on your next session with any advisor.
       </p>
-      <div className="rounded-xl border border-neon-teal/35 bg-neon-teal/5 p-4 sm:p-5">
+      <div className="rounded-2xl border border-navy/10 bg-navy-light p-5 sm:p-6 transition-all hover:shadow-lg hover:shadow-navy/5 group">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-teal/15 text-neon-teal">
-            <IndianRupee className="h-5 w-5" aria-hidden />
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm text-navy group-hover:scale-110 transition-transform">
+            <IndianRupee className="h-6 w-6" aria-hidden />
           </span>
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -106,9 +106,9 @@ export default function StudentReferEarnPage() {
           <p className="text-lg font-semibold text-foreground">{summary?.total_referrals ?? 0}</p>
         </div>
       </div>
-      <div className="bg-background/50 rounded-xl p-3 border border-border/50">
-        <p className="text-xs text-muted-foreground mb-1">Your referral code</p>
-        <p className="text-sm font-medium text-neon-teal">{summary?.referral_code || "Loading..."}</p>
+      <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Your Unique Referral Code</p>
+        <p className="text-sm font-black text-navy">{summary?.referral_code || "GENERATE_CODE"}</p>
       </div>
       <div className="space-y-2">
         <label className="text-sm text-muted-foreground">Referred user email</label>
@@ -119,7 +119,7 @@ export default function StudentReferEarnPage() {
           placeholder="friend@example.com"
           autoComplete="email"
           disabled={busy}
-          className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal transition-colors disabled:opacity-60"
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-navy transition-all disabled:opacity-60 shadow-sm"
         />
       </div>
       <div className="space-y-2">
@@ -128,7 +128,7 @@ export default function StudentReferEarnPage() {
           value={referredRole}
           onChange={(e) => setReferredRole(e.target.value as "student" | "advisor")}
           disabled={busy}
-          className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal transition-colors disabled:opacity-60"
+          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-navy transition-all disabled:opacity-60 shadow-sm"
         >
           <option value="student">Student</option>
           <option value="advisor">Advisor</option>
@@ -138,7 +138,7 @@ export default function StudentReferEarnPage() {
         type="button"
         onClick={handleCreate}
         disabled={busy}
-        className="bg-neon-teal hover:bg-neon-teal/90 text-black"
+        className="w-full bg-navy hover:bg-navy/90 text-white font-black uppercase tracking-widest h-14 rounded-2xl shadow-xl shadow-navy/10 transition-all active:scale-[0.98]"
       >
         {busy ? "Submitting..." : "Record referral"}
       </Button>

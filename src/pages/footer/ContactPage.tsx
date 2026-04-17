@@ -1,189 +1,105 @@
-"use client"; // Required if using Next.js App Router
+import React from "react";
+import { motion } from "motion/react";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import { 
+  Mail, 
+  MapPin, 
+  Phone, 
+  MessageSquare, 
+  Send, 
+  Clock,
+  Instagram,
+  Linkedin
+} from "lucide-react";
 
-import React, { useState, useEffect } from "react";
-
-export default function Contact() {
-  const content = `Contact Us
-  
-
-We're here to help you make the right decisions and ensure a smooth experience on CollegeConnect.
-
-Whether you're a student, parent, advisor, or partner — feel free to reach out to us through the appropriate channels below.
-
-General Support
-
-For any platform-related issues, technical problems, account help, or general queries:
-
-📧 support@collegeconnects.co.in
-
----
-
-Session & Booking Support
-
-Facing issues with session booking, rescheduling, payments, or refunds?
-
-📧 sessionbooking@collegeconnects.co.in
-
----
-
-Partnerships & Collaborations
-
-For college collaborations, business partnerships, sponsorships, or institutional tie-ups:
-
-📧 partnership@collegeconnects.co.in
-
----
-
-Marketing & Promotions
-
-For marketing campaigns, brand promotions, influencer collaborations, or media inquiries:
-
-📧 marketing@collegeconnects.co.in
-
----
-
-Technical & Development
-
-To report bugs, technical issues, or suggest improvements:
-
-📧 dev@collegeconnects.co.in
-
----
-
-Team & Internal Communication
-
-For internal or team-related communication:
-
-📧 team@collegeconnects.co.in
-
----
-
-Important Notice
-
-- Please contact only through the official email channels listed above.
-- We do not encourage sharing personal contact details outside the platform.
-- Our team typically responds within 24–48 hours.
-
----
-
-About CollegeConnect
-
-CollegeConnect is a student-to-student interaction platform designed to provide real, unbiased insights into colleges by connecting aspirants and parents directly with verified undergraduate students.
-
-Our mission is to make college decision-making transparent, reliable, and stress-free.
-
----
-
-💬 Need urgent help?
-
-Reach out to our support team, and we'll assist you as quickly as possible.`;
-
-  const lines = content.split("\n");
-
-  const creators = [
-    { id: 1, src: "/figures/1.jpeg", name: "Karri Kishan", position: "Founder & CEO" },
-    { id: 2, src: "/figures/2.jpeg", name: "Bhargav Venkat", position: "Co-Founder and Founding Engineer" },
-    { id: 3, src: "/figures/3.jpeg", name: "Yaswanth Buduru", position: "CTO and Co-Founder" },
-    { id: 4, src: "/figures/4.jpeg", name: "Sai Badrishwar S S", position: "Chief Marketing officer (CMO)" },
-    { id: 6, src: "/figures/6.jpeg", name: "Sreeramadasu Mukunda Rama Chary", position: "Chief Information Officer (CIO)" },
-  ];
-
-  // Placeholder data for the rest of your team
-  const extendedTeam = [
-    { role: "Technical Team", members: [ "Hitesh Sirvi"] },
-    { role: "Marketing & Outreach", members: ["Anil Kumar", "Ajay Gagan Deep"] },
-    { role: "Management Team", members: ["Kartik Shukla", "V Rushi"] },
-    { role: "Consulting Team", members: ["Manne Greeshmant", "Nimmagadda Nayanamitra"]},
-    { role: "Info Collector Team", members: [ "Charan Raj V"]}
-  ];
-
-  // Carousel State
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  // Auto-play functionality
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % creators.length);
-    }, 2000); // 3000ms = 3 seconds
-
-    // Cleanup function
-    return () => clearInterval(interval);
-  }, [creators.length]);
-
+export default function ContactPage() {
   return (
-    <div className="min-h-screen px-4 sm:px-6 pt-24 pb-8 overflow-hidden">
-      <div className="max-w-4xl mx-auto">
-        
-        {/* Automatic Carousel Section */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center mb-10 text-foreground">Meet the Core Team</h2>
-          
-          <div className="relative flex items-center justify-center h-64 w-full">
-            {creators.map((creator, i) => {
-              const isActive = i === activeIndex;
-
-              // Determine position and styling based on active index
-              let positionClass = "translate-x-[200%] opacity-0 scale-50 z-0"; // Hidden by default
-              
-              if (isActive) {
-                // Center Image (Active)
-                positionClass = "translate-x-0 opacity-100 scale-100 z-10 blur-none";
-              } else if (i === (activeIndex - 1 + creators.length) % creators.length) {
-                // Left Adjacent Image
-                positionClass = "-translate-x-24 sm:-translate-x-40 opacity-60 scale-75 z-0 blur-[2px]";
-              } else if (i === (activeIndex + 1) % creators.length) {
-                // Right Adjacent Image
-                positionClass = "translate-x-24 sm:translate-x-40 opacity-60 scale-75 z-0 blur-[2px]";
-              }
-
-              return (
-                <div 
-                  key={creator.id} 
-                  className={`absolute flex flex-col items-center text-center transition-all duration-500 ease-in-out ${positionClass}`}
-                >
-                  <img 
-                    src={creator.src} 
-                    alt={creator.name} 
-                    loading={isActive ? "eager" : "lazy"}
-                    decoding="async"
-                    fetchPriority={isActive ? "high" : "low"}
-                    width={160}
-                    height={160}
-                    sizes="(max-width: 640px) 128px, 160px"
-                    className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover mb-4 border-4 border-yellow-500 shadow-lg shadow-yellow-500/50"
-                  />
-                  <h3 className="text-xl font-semibold text-foreground">{creator.name}</h3>
-                  <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">{creator.position}</p>
-                </div>
-              );
-            })}
-          </div>
+    <div className="min-h-screen bg-white selection:bg-orange-100 selection:text-orange-900">
+      <Navbar />
+      
+      {/* Header Section */}
+      <div className="pt-40 pb-20 px-6 relative overflow-hidden border-b border-slate-100">
+        <div className="absolute inset-0 grid-lines opacity-30" />
+        <div className="max-w-7xl mx-auto relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1 }}
+          >
+            <div className="flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border border-slate-200 bg-white inline-flex text-xs font-bold tracking-widest text-[#F5A623] uppercase">
+              <MessageSquare size={14} />
+              Open Communication
+            </div>
+            <h1 className="text-7xl md:text-8xl font-black text-slate-900 mb-8 tracking-tighter uppercase italic">
+              Let's <span className="text-[#F5A623]">Talk.</span>
+            </h1>
+            <p className="max-w-2xl mx-auto text-xl text-slate-500 font-medium leading-relaxed">
+              Have questions about becoming an advisor or using the platform? Our team typically responds within 4 business hours.
+            </p>
+          </motion.div>
         </div>
+      </div>
 
-        {/* Extended Team Section */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold text-center mb-8 text-foreground">Extended Team</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {extendedTeam.map((team, idx) => (
-              <div key={idx} className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 text-center">
-                <h3 className="text-lg font-bold mb-4 text-yellow-600 dark:text-yellow-500">{team.role}</h3>
-                <ul className="space-y-2 text-gray-600 dark:text-gray-300">
-                  {team.members.map((member, mIdx) => (
-                    <li key={mIdx} className="text-sm font-medium">{member}</li>
-                  ))}
-                </ul>
+      {/* Contact Channels Grid */}
+      <div className="max-w-7xl mx-auto px-6 py-24">
+        <div className="mb-20">
+          <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight mb-8 italic">Specialized <span className="text-[#F5A623]">Channels</span></h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { label: "General Support", desc: "For platform-related issues, technical problems, or account help.", email: "support@collegeconnects.co.in" },
+              { label: "Session & Booking", desc: "Issues with session booking, rescheduling, payments, or refunds.", email: "sessionbooking@collegeconnects.co.in" },
+              { label: "Partnerships", desc: "For college collaborations, sponsorships, or institutional tie-ups.", email: "partnership@collegeconnects.co.in" },
+              { label: "Marketing", desc: "For campaigns, promotions, or influencer collaborations.", email: "marketing@collegeconnects.co.in" },
+              { label: "Technical & Dev", desc: "To report bugs or suggest technical improvements.", email: "dev@collegeconnects.co.in" },
+              { label: "Team & Internal", desc: "For internal or team-related communication.", email: "team@collegeconnects.co.in" }
+            ].map((item, i) => (
+              <div key={i} className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 hover:border-[#F5A623] transition-all group">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#F5A623] mb-3">{item.label}</h4>
+                <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed h-10">{item.desc}</p>
+                <a 
+                  href={`mailto:${item.email}`} 
+                  className="text-sm font-bold text-slate-900 group-hover:text-[#F5A623] transition-colors flex items-center gap-2"
+                >
+                  <Mail size={14} />
+                  {item.email}
+                </a>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Text Content */}
-        <div className="text-foreground leading-relaxed space-y-3 whitespace-pre-wrap pt-8 border-t border-gray-200 dark:border-gray-800">
-          {lines.map((line, index) => (
-            <div key={index}>
-              {line}
-            </div>
-          ))}
+        <div className="grid lg:grid-cols-2 gap-12">
+          {/* Important Notice */}
+          <div className="p-10 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10"><Clock size={100} /></div>
+            <h3 className="text-xl font-black uppercase italic tracking-tighter mb-8 text-[#F5A623]">Important Notice</h3>
+            <ul className="space-y-6 relative z-10">
+              <li className="flex gap-4 items-start">
+                <span className="text-[#F5A623] font-black italic">!</span>
+                <p className="text-sm font-bold text-slate-300">Please contact only through the official email channels listed above.</p>
+              </li>
+              <li className="flex gap-4 items-start">
+                <span className="text-[#F5A623] font-black italic">!</span>
+                <p className="text-sm font-bold text-slate-300">We do not encourage sharing personal contact details outside the platform.</p>
+              </li>
+              <li className="flex gap-4 items-start">
+                <span className="text-[#F5A623] font-black italic">!</span>
+                <p className="text-sm font-bold text-slate-300">Our team typically responds within 24–48 hours.</p>
+              </li>
+            </ul>
+          </div>
+
+          {/* About Contact */}
+          <div className="p-10 rounded-[3rem] bg-orange-50 border border-orange-100">
+             <h3 className="text-xl font-black uppercase italic tracking-tighter mb-6 text-slate-900 leading-none">About CollegeConnect</h3>
+             <p className="text-sm text-slate-600 font-medium leading-relaxed mb-6">
+               CollegeConnect is a student-to-student interaction platform designed to provide real, unbiased insights into colleges by connecting aspirants and parents directly with verified undergraduate students.
+             </p>
+             <div className="text-sm font-bold text-slate-900 italic">
+               Our mission is to make college decision-making transparent, reliable, and stress-free.
+             </div>
+          </div>
         </div>
       </div>
     </div>
