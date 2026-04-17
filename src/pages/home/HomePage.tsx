@@ -10,9 +10,13 @@ export default function HomePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Only auto-redirect if there's no hash — hash links (#how-it-works, #why-us)
+    // should always show the section, even for logged-in users.
+    if (window.location.hash) return;
+
     const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+      if (user && !window.location.hash) {
         const role = localStorage.getItem("user_role");
         if (role === "student") {
           navigate({ to: "/student/dashboard" });

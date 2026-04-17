@@ -68,7 +68,7 @@ export default function WhySection() {
           <div className="bg-white md:col-span-2 group overflow-hidden">
             <div className="h-64 overflow-hidden relative">
               <img 
-                src="https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1000" 
+                src="/college-life.jpg" 
                 alt="College Life" 
                 className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
               />

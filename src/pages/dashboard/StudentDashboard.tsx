@@ -244,8 +244,24 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-navy/10 selection:text-navy relative overflow-hidden">
-      {/* Topographic Background Pattern */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(#1E3A8A 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
+      {/* ── Rich Background Design ── */}
+      {/* Large navy gradient blob — top left */}
+      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-navy/10 via-blue-400/5 to-transparent blur-3xl pointer-events-none" />
+      {/* Accent blob — bottom right */}
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tl from-blue-200/20 via-slate-200/10 to-transparent blur-2xl pointer-events-none" />
+      {/* Fine diagonal line grid */}
+      <div
+        className="absolute inset-0 opacity-[0.025] pointer-events-none"
+        style={{ backgroundImage: `repeating-linear-gradient(45deg, #1E3A8A 0px, #1E3A8A 1px, transparent 1px, transparent 28px)`, backgroundSize: '40px 40px' }}
+      />
+      {/* Dot grid overlay */}
+      <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: `radial-gradient(#1E3A8A 0.8px, transparent 0.8px)`, backgroundSize: '32px 32px' }} />
+      {/* Floating concentric rings — top right */}
+      <div className="absolute top-32 right-16 w-64 h-64 rounded-full border-[1.5px] border-navy/10 pointer-events-none" />
+      <div className="absolute top-44 right-28 w-40 h-40 rounded-full border border-navy/8 pointer-events-none" />
+      {/* Floating rotated squares — bottom left */}
+      <div className="absolute bottom-40 left-10 w-24 h-24 border border-blue-200/40 rotate-12 rounded-2xl pointer-events-none" />
+      <div className="absolute bottom-60 left-24 w-12 h-12 border border-navy/10 rotate-45 pointer-events-none" />
       
       <div className="pt-32 pb-28 sm:pb-24 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">

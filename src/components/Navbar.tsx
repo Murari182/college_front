@@ -41,14 +41,19 @@ export default function Navbar() {
   const handleNavClick = (href: string) => {
     setMobileOpen(false);
     if (href === "/") {
+      // Go home but don't trigger dashboard redirect for logged-in users browsing home
       window.location.href = "/";
       return;
     }
-    if (isHomePage) {
-      const el = document.querySelector(href);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    } else {
-      window.location.href = "/" + href;
+    if (href.startsWith("#")) {
+      if (isHomePage) {
+        // Already on homepage — smooth scroll to section
+        const el = document.querySelector(href);
+        if (el) el.scrollIntoView({ behavior: "smooth" });
+      } else {
+        // Navigate to home with the hash — browser will scroll natively
+        window.location.href = "/" + href;
+      }
     }
   };
 
