@@ -1,140 +1,116 @@
-﻿import { Calendar, Lightbulb, Search, Video } from "lucide-react";
-import { motion } from "motion/react";
-import type { Variants } from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
+import { useRef } from "react";
+import { Search, Calendar, Video, Lightbulb } from "lucide-react";
 
 const steps = [
   {
+    num: "01",
     icon: Search,
-    number: "01",
     title: "Search Advisor",
-    description:
-      "Browse student advisors by college, branch, or year. Filter by rating and session price to find your perfect match.",
-    borderColor: "border-neon-orange/40",
-    iconBg: "bg-neon-orange/10",
-    iconColor: "text-neon-orange",
-    numberColor: "text-neon-orange/20",
+    description: "Browse student advisors by college, branch, or year. Filter by rating and session price to find your perfect match."
   },
   {
+    num: "02",
     icon: Calendar,
-    number: "02",
     title: "Book Session",
-    description:
-      "Choose a time slot that works for you. Pay securely online for a 30 or 60-minute one-on-one session.",
-    borderColor: "border-neon-teal/40",
-    iconBg: "bg-neon-teal/10",
-    iconColor: "text-neon-teal",
-    numberColor: "text-neon-teal/20",
+    description: "Choose a time slot that works for you. Pay securely online for a 30 or 60-minute one-on-one session.",
+    badges: ["30 min — ₹199", "60 min — ₹349"]
   },
   {
+    num: "03",
     icon: Video,
-    number: "03",
     title: "Talk on Google Meet",
-    description:
-      "Join a private Google Meet session. Ask anything  -  hostel life, academics, placements, campus culture.",
-    borderColor: "border-neon-blue/40",
-    iconBg: "bg-neon-blue/10",
-    iconColor: "text-neon-blue",
-    numberColor: "text-neon-blue/20",
+    description: "Join your private session link directly. Ask your questions comfortably and get the insights you need."
   },
   {
+    num: "04",
     icon: Lightbulb,
-    number: "04",
     title: "Get Real Insights",
-    description:
-      "Walk away with honest, first-hand knowledge that no brochure or review site can give you.",
-    borderColor: "border-neon-orange/40",
-    iconBg: "bg-neon-orange/10",
-    iconColor: "text-neon-orange",
-    numberColor: "text-neon-orange/20",
-  },
+    description: "Walk away with clarity and confidence. No more guessing—only knowing where you're headed."
+  }
 ];
 
-const containerVariants: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.15 },
-  },
-};
+function StepCard({ step, i, scrollYProgress }: { step: any, i: number, scrollYProgress: any }) {
+  // Each card has a slightly different parallax speed
+  const y = useTransform(scrollYProgress, [0, 1], [0, -50 * (i + 1)]);
+  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0.3, 1, 1, 0.3]);
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.95, 1, 0.95]);
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
-  },
-};
+  return (
+    <motion.div
+      style={{ y, opacity, scale }}
+      className="bg-[#F8F9FB] p-12 relative group hover:bg-white transition-colors duration-500 border-r border-b border-slate-100"
+    >
+      {/* Numeric Watermark */}
+      <div className="absolute top-10 right-10 text-8xl font-black text-orange-500/5 select-none pointer-events-none group-hover:text-orange-500/10 transition-colors">
+        {step.num}
+      </div>
+
+      <div className="relative z-10">
+        <div className="w-12 h-12 rounded-lg bg-white border border-orange-100 flex items-center justify-center text-[#F5A623] mb-10 shadow-sm transition-transform group-hover:scale-110">
+          <step.icon size={22} strokeWidth={2.5} />
+        </div>
+        
+        <p className="text-[10px] font-black text-[#F5A623] uppercase tracking-[0.2em] mb-4">Step {step.num}</p>
+        <h3 className="text-3xl font-bold text-[#1E1E1E] mb-6">{step.title}</h3>
+        <p className="text-slate-500 font-medium leading-relaxed max-w-sm">
+          {step.description}
+        </p>
+
+        {step.badges && (
+          <div className="flex gap-3 mt-8">
+            {step.badges.map(b => (
+              <span key={b} className="px-3 py-1.5 rounded bg-white border border-slate-100 text-[10px] font-bold text-slate-400">
+                {b}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function HowItWorksSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
   return (
-    <section
-      id="how-it-works"
-      className="relative py-24 px-4 sm:px-6 overflow-hidden"
-    >
-      <div className="max-w-6xl mx-auto">
+    <section ref={containerRef} id="how-it-works" className="bg-white py-32 px-6 border-t border-slate-100">
+      <div className="container mx-auto">
+        
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-foreground">
-            How It <span className="gradient-text-teal">Works</span>
-          </h2>
-          <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-6">
+          <motion.h2 
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="text-5xl md:text-7xl font-extrabold text-[#1E1E1E]"
+          >
+            How It Works
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-slate-400 font-medium mb-4"
+          >
             From search to insight in four simple steps.
-          </p>
-        </motion.div>
+          </motion.p>
+        </div>
 
-        {/* Steps */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.number}
-              variants={itemVariants}
-              className={`relative glass rounded-2xl p-6 border ${
-                step.borderColor
-              } group hover:-translate-y-2 transition-transform duration-300`}
-            >
-              {/* Connector line */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-10 left-full w-6 z-10">
-                  <div className="h-px w-full bg-gradient-to-r from-border to-transparent" />
-                </div>
-              )}
-
-              {/* Number */}
-              <div
-                className={`text-7xl font-display font-bold ${step.numberColor} leading-none mb-4 select-none`}
-              >
-                {step.number}
-              </div>
-
-              {/* Icon */}
-              <div
-                className={`w-12 h-12 rounded-xl ${step.iconBg} flex items-center justify-center mb-4`}
-              >
-                <step.icon size={22} className={step.iconColor} />
-              </div>
-
-              {/* Content */}
-              <h3 className="font-display font-semibold text-lg text-foreground mb-2">
-                {step.title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {step.description}
-              </p>
-            </motion.div>
+        {/* Steps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 bg-slate-100 border-l border-t border-slate-100 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/50">
+          {steps.map((step, i) => (
+            <StepCard key={step.num} step={step} i={i} scrollYProgress={scrollYProgress} />
           ))}
-        </motion.div>
+        </div>
+
       </div>
     </section>
   );

@@ -8,41 +8,34 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDropdown } from "./ProfileDropdown";
 
 const navLinks: { label: string; href: string; isHash: boolean }[] = [
-  { label: "Home", href: "/", isHash: false },
-  { label: "How It Works", href: "#how-it-works", isHash: true },
-  { label: "Why Us", href: "#why-us", isHash: true },
-  { label: "College Predictor", href: "/college-predictor", isHash: false },
+  { label: "HOME", href: "/", isHash: false },
+  { label: "HOW IT WORKS", href: "#how-it-works", isHash: true },
+  { label: "WHY US", href: "#why-us", isHash: true },
+  { label: "COLLEGE PREDICTOR", href: "/college-predictor", isHash: false },
+  { label: "ABOUT", href: "/about", isHash: false },
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
-  const [authResolved, setAuthResolved] = useState(false);
   const location = useLocation();
-
-  const isHomePage = location.pathname === "/";
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, (u) => {
-      setAuthUser(u);
-      setAuthResolved(true);
-    });
-  }, []);
-  const isPostSigninPage =
-    location.pathname.startsWith("/student/dashboard") ||
-    location.pathname.startsWith("/advisor/dashboard");
+    
+    // Set initial user if already available (prevents guest flicker)
+    if (auth.currentUser) {
+      setAuthUser(auth.currentUser);
+    }
 
-  // We only show Top Nav links (Home, How It Works) if we're NOT on a dashboard
-  const showTopNavLinks = !isPostSigninPage;
-  const showAuthButtons = !authUser && !isPostSigninPage;
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setAuthUser(u);
+    });
+    return unsub;
+  }, []);
+
+  const isHomePage = location.pathname === "/";
+  const isDashboard = location.pathname.includes("/dashboard");
   const userRole = (localStorage.getItem("user_role") as "student" | "advisor") || "student";
 
   const handleNavClick = (href: string) => {
@@ -60,30 +53,23 @@ export default function Navbar() {
   };
 
   return (
-    <motion.header
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? "glass-strong py-3" : "py-5"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-50 transition-all duration-300 py-4">
+      <div className="container mx-auto px-6 flex items-center justify-between">
+        
         {/* Logo */}
-        <BrandLogo size="sm" asLink withText />
+        <div className="flex-shrink-0">
+          <BrandLogo size="sm" asLink withText />
+        </div>
 
         {/* Desktop Nav */}
-        {showTopNavLinks ? (
-          <nav className="hidden md:flex items-center gap-6">
+        {!isDashboard && (
+          <nav className="hidden lg:flex items-center gap-10">
             {navLinks.map((link) =>
               link.isHash ? (
                 <button
-                  type="button"
                   key={link.href}
                   onClick={() => handleNavClick(link.href)}
-                  className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-                  data-ocid="nav.link"
+                  className="text-[11px] font-black text-slate-400 hover:text-[#F5A623] transition-colors tracking-[0.15em] uppercase"
                 >
                   {link.label}
                 </button>
@@ -91,46 +77,17 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-                  data-ocid="nav.link"
+                  className="text-[11px] font-black text-slate-400 hover:text-[#F5A623] transition-colors tracking-[0.15em] uppercase"
                 >
                   {link.label}
                 </Link>
-              ),
+              )
             )}
-            <Link
-              to="/about"
-              className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-            >
-              About
-            </Link>
-          </nav>
-        ) : (
-          <nav className="hidden md:flex items-center gap-6">
-            {/* On Dashboard, show Predictor and Analysis */}
-            <Link
-              to="/college-predictor"
-              className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-            >
-              College Predictor
-            </Link>
-            <Link
-              to="/analysis"
-              className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-            >
-              Analysis Page
-            </Link>
-            <Link
-              to="/about"
-              className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-200 hover:text-glow-teal"
-            >
-              About
-            </Link>
           </nav>
         )}
 
-        {/* Authenticated State vs Guest State */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Auth Buttons */}
+        <div className="hidden lg:flex items-center gap-8">
           {authUser ? (
             <ProfileDropdown 
               role={userRole} 
@@ -139,146 +96,55 @@ export default function Navbar() {
             />
           ) : (
             <>
-              <Link
-                to="/auth/signup"
-                className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 hover:scale-105 text-black font-semibold rounded-xl px-5 py-2 text-sm glow-orange transition-all duration-300"
-              >
-                Sign Up
+              <Link to="/auth/signin" className="text-[11px] font-black text-slate-400 hover:text-slate-900 tracking-[0.15em] uppercase">
+                SIGN IN
               </Link>
-              <Link
-                to="/auth/signin"
-                className="text-sm font-medium text-foreground hover:text-neon-teal transition-colors"
-              >
-                Sign In
+              <Link to="/auth/signup" className="btn-primary py-3 px-8 text-[11px] tracking-[0.1em] rounded-md">
+                SIGN UP
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile menu toggle logic - similar cleanup */}
-        <div className="md:hidden flex items-center gap-4">
-          {!authUser && (
-            <Link
-              to="/auth/signup"
-              className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-lg px-3 py-1.5 text-xs glow-orange transition-all duration-300"
-            >
-              Sign Up
-            </Link>
-          )}
-          {authUser && (
-            <ProfileDropdown 
-              role={userRole} 
-              userName={authUser.displayName || undefined} 
-              avatarUrl={authUser.photoURL || undefined}
-            />
-          )}
-          <button
-            type="button"
-            className="text-foreground p-2"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
-        </div>
+        {/* Mobile Toggle */}
+        <button className="lg:hidden p-2 text-slate-900" onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="md:hidden glass-strong border-t border-border overflow-hidden"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="lg:hidden absolute top-full left-0 right-0 bg-white border-t border-slate-50 shadow-2xl p-8"
           >
-            <nav className="flex flex-col px-4 py-4 gap-3">
-              {showTopNavLinks ? (
-                navLinks.map((link) =>
-                  link.isHash ? (
-                    <button
-                      type="button"
-                      key={link.href}
-                      onClick={() => handleNavClick(link.href)}
-                      className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2"
-                      data-ocid="nav.link"
-                    >
-                      {link.label}
-                    </button>
-                  ) : (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setMobileOpen(false)}
-                      className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2 block"
-                      data-ocid="nav.link"
-                    >
-                      {link.label}
-                    </Link>
-                  ),
-                )
-              ) : (
-                <>
-                  <Link
-                    to="/college-predictor"
-                    onClick={() => setMobileOpen(false)}
-                    className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2 block"
-                  >
-                    College Predictor
-                  </Link>
-                  <Link
-                    to="/analysis"
-                    onClick={() => setMobileOpen(false)}
-                    className="text-left text-sm font-body text-muted-foreground hover:text-foreground transition-colors py-2 block"
-                  >
-                    Analysis Page
-                  </Link>
-                </>
-              )}
-              {showAuthButtons ? (
-                <>
-                  <Link
-                    to="/auth/signup"
-                    onClick={() => setMobileOpen(false)}
-                    className="inline-flex items-center justify-center bg-neon-orange hover:bg-neon-orange/80 text-black font-semibold rounded-xl px-5 py-2.5 text-sm glow-orange transition-all duration-300 mt-4"
-                  >
-                    Sign Up
-                  </Link>
-
-                  <Link
-                    to="/auth/signin"
-                    onClick={() => setMobileOpen(false)}
-                    className="text-center text-sm font-medium text-foreground py-2 mt-2"
-                  >
-                    Sign In
-                  </Link>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    getFirebaseAuth().signOut();
-                    window.location.href = "/";
-                  }}
-                  className="text-center text-sm font-medium text-muted-foreground py-4 mt-2 border-t border-border/20"
+            <nav className="flex flex-col gap-6 text-center">
+              {navLinks.map(link => (
+                <button 
+                  key={link.href}
+                  onClick={() => handleNavClick(link.href)}
+                  className="text-[12px] font-black text-slate-400 uppercase tracking-widest"
                 >
-                  Sign Out
+                  {link.label}
                 </button>
-              )}
-
-              {/* Legal Section */}
-              <div className="border-t border-border/40 mt-6 pt-6 flex flex-col gap-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-2">Support & Legal</p>
-                <Link to="/about" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">About</Link>
-                <Link to="/privacy" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Privacy Policy</Link>
-                <Link to="/terms" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Terms of Service</Link>
-                <Link to="/contact" onClick={() => setMobileOpen(false)} className="text-sm font-body text-muted-foreground hover:text-foreground px-2">Contact Us</Link>
+              ))}
+              <div className="pt-6 border-t border-slate-50 flex flex-col gap-4">
+                {authUser ? (
+                  <button onClick={() => getFirebaseAuth().signOut()} className="text-red-500 font-bold">Log Out</button>
+                ) : (
+                  <>
+                    <Link to="/auth/signin" className="text-[12px] font-black text-slate-900">SIGN IN</Link>
+                    <Link to="/auth/signup" className="btn-primary py-4">SIGN UP</Link>
+                  </>
+                )}
               </div>
             </nav>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.header>
+    </header>
   );
 }

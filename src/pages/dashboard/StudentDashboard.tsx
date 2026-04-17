@@ -1,25 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getAdvisorsDirectory,
   getMyStudentProfile,
   getMyBookings,
-  getStudentReferralSummary,
   type AdvisorDirectoryItem,
   type StudentProfileResponse,
   type BookingResponse,
-  type ReferralSummaryResponse,
   syncBookingStatus,
 } from "@/lib/restApi";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle } from "lucide-react";
-import { motion } from "motion/react";
-import { useEffect } from "react";
+import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import StudentReferEarnPage from "./StudentReferEarnPage";
-
-const COLLEGES = ["All Colleges", "RGIPT", "IIT Delhi", "IIT Bombay", "NIT Trichy", "BITS Pilani"];
-const BRANCHES = ["All Branches", "Computer Science", "Petroleum Engineering", "Information Technology", "Electronics Engineering", "Mathematics and Computing"];
+import { BrandLogo } from "@/components/BrandLogo";
+import { use3DTilt } from "@/hooks/use3DTilt";
+import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
+import { ProfileDropdown } from "@/components/ProfileDropdown";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
@@ -27,84 +25,144 @@ const TABS = [
   { id: "refer", label: "Refer & Earn", icon: Gift },
 ];
 
+const ADVISOR_COLORS = [
+  { bg: "bg-navy-light", text: "text-navy", border: "border-navy/10", gradient: "from-blue-500/10 to-navy/10" },
+  { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", gradient: "from-emerald-400/10 to-emerald-600/10" },
+  { bg: "bg-mango-light", text: "text-mango-dark", border: "border-mango/10", gradient: "from-mango/10 to-orange-500/10" },
+  { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100", gradient: "from-rose-400/10 to-rose-600/10" },
+  { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100", gradient: "from-indigo-400/10 to-indigo-600/10" },
+];
+
+const getAdvisorTheme = (name: string) => {
+  const charCode = name.charCodeAt(0) || 0;
+  return ADVISOR_COLORS[charCode % ADVISOR_COLORS.length];
+};
+
+function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onClick: () => void }) {
+  const theme = getAdvisorTheme(advisor.name);
+  const dummyBio = "Top-tier student advisor specialized in navigating campus culture, academic excellence, and career roadmaps. Passionate about helping peers succeed.";
+  const dummyFocus = advisor.branch || "General Mentorship";
+
+  return (
+    <motion.div
+      variants={fadeInUp}
+      whileHover={{ y: -6, scale: 1.01 }}
+      onClick={onClick}
+      className="card-solid group rounded-[2.5rem] p-8 flex flex-col h-full cursor-pointer relative overflow-hidden transition-all hover:shadow-2xl hover:shadow-slate-200/50"
+    >
+      {/* Decorative Gradient Background */}
+      <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${theme.gradient} blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
+      <div className="flex items-start gap-6 mb-6">
+        <div className={`w-16 h-16 rounded-[1.5rem] ${theme.bg} ${theme.border} border flex items-center justify-center text-2xl font-black ${theme.text} transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-sm`}>
+          {advisor.name.charAt(0)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+             <h4 className="text-xl font-black text-slate-900 group-hover:text-navy transition-colors truncate">
+              {advisor.name}
+            </h4>
+            {advisor.session_price > 150 && (
+              <span className="bg-mango/10 text-mango-dark text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Top Rated</span>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] truncate mb-3">{advisor.college || "Leading University"}</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 text-xs font-black text-slate-900 group-hover:bg-white group-hover:border-navy/10 transition-all">
+             <IndianRupee size={12} className="text-navy" />
+             ₹{advisor.session_price || 100} / session
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 mb-8">
+        <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed font-bold italic opacity-80 group-hover:opacity-100 transition-opacity">
+          "{advisor.bio?.length > 10 ? advisor.bio : dummyBio}"
+        </p>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-50">
+        <div className="flex flex-col">
+          <p className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-300 mb-1">Focus Area</p>
+          <p className="text-xs font-black text-slate-900 group-hover:text-navy transition-colors">{dummyFocus}</p>
+        </div>
+        <div className={`w-12 h-12 rounded-2xl ${theme.bg} ${theme.border} border flex items-center justify-center ${theme.text} transition-all duration-500 group-hover:bg-navy group-hover:text-white group-hover:border-navy group-hover:shadow-xl group-hover:shadow-navy/20`}>
+          <ArrowRight size={22} strokeWidth={3} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function BookingCardContent({ booking }: { booking: BookingResponse }) {
   const [syncing, setSyncing] = useState(false);
 
   const handleSyncStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const auth = getFirebaseAuth();
-    const u = auth.currentUser;
+    const u = getFirebaseAuth().currentUser;
     if (!u) return;
-
     setSyncing(true);
     try {
       const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        alert("Payment verified! Your session is now confirmed.");
+        alert("Payment verified!");
         window.location.reload(); 
       } else {
-        alert(res.message || "Payment not yet received.");
+        alert(res.message || "Payment pending.");
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Sync failed.");
+      alert("Sync failed.");
     } finally {
       setSyncing(false);
     }
   };
 
-  const handleJoin = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!booking.meet_link) return;
-    window.open(booking.meet_link, "_blank");
-  };
-
   return (
-    <div className="glass rounded-2xl border border-border p-5 hover:border-neon-teal/50 transition-colors group flex flex-col h-full cursor-pointer overflow-hidden">
-      <div className="flex-1">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Advisor</p>
-            <p className="text-lg font-semibold text-foreground">{booking.advisor_name}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <p
-              className={`text-[10px] px-2 py-0.5 rounded-full border uppercase font-medium ${
-                booking.status === "confirmed" || booking.status === "finalized"
-                  ? "bg-neon-teal/10 border-neon-teal/30 text-neon-teal"
-                  : "bg-amber-500/10 border-amber-500/30 text-amber-500"
-              }`}
-            >
-              {booking.status || "pending"}
-            </p>
-            {booking.status === "pending" && (
-              <button
-                onClick={handleSyncStatus}
-                disabled={syncing}
-                className="inline-flex items-center gap-1 text-neon-teal hover:text-neon-teal/80 transition-colors"
-                title="Already paid? Click to sync status"
-              >
-                <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
-                <span className="text-[10px] font-semibold underline">Check Payment</span>
-              </button>
-            )}
-          </div>
+    <motion.div
+      variants={fadeInUp}
+      className="card-solid rounded-2xl p-6"
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1">Session</p>
+          <p className="text-lg font-bold text-slate-900">{booking.advisor_name}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <span className={`stat-badge ${
+            booking.status === "confirmed" || booking.status === "finalized"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+              : "bg-orange-50 text-orange-700 border-orange-100"
+          }`}>
+            {booking.status || "pending"}
+          </span>
+          {booking.status === "pending" && (
+            <button onClick={handleSyncStatus} disabled={syncing} className="text-[10px] text-orange-600 font-bold hover:underline flex items-center gap-1 transition-all">
+              <RefreshCw size={10} className={syncing ? "animate-spin" : ""} />
+              VERIFY NOW
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2">
-        <div className="flex gap-2">
-          <button
-            disabled={!booking.meet_link || (booking.status !== "confirmed" && booking.status !== "finalized")}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 bg-neon-teal hover:bg-neon-teal/90 text-black text-xs font-semibold h-9 rounded-xl transition-all disabled:opacity-50"
-            onClick={handleJoin}
-          >
-            <Video size={14} />
-            {booking.status === "pending" ? "Pending" : "Join"}
-          </button>
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center gap-3 text-sm font-bold text-slate-800">
+          <Calendar size={14} className="text-slate-400" />
+          <span>{booking.selected_slot || "No date set"}</span>
+        </div>
+        <div className="flex items-center gap-3 text-sm font-bold text-slate-800">
+          <Video size={14} className="text-slate-400" />
+          <span>Google Meet Room</span>
         </div>
       </div>
-    </div>
+
+      <button
+        disabled={!booking.meet_link || (booking.status !== "confirmed" && booking.status !== "finalized")}
+        className="btn-primary w-full h-11 text-sm disabled:opacity-30"
+        onClick={() => booking.meet_link && window.open(booking.meet_link, "_blank")}
+      >
+        {booking.status === "pending" ? "Waiting for Approval" : "Join Session"}
+      </button>
+    </motion.div>
   );
 }
 
@@ -115,241 +173,264 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState<StudentProfileResponse | null>(null);
   const [advisors, setAdvisors] = useState<AdvisorDirectoryItem[]>([]);
   const [advisorsLoading, setAdvisorsLoading] = useState(true);
-  const [advisorsError, setAdvisorsError] = useState<string | null>(null);
   const [sessionBookings, setSessionBookings] = useState<BookingResponse[]>([]);
   const [selectedCollege, setSelectedCollege] = useState("All Colleges");
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
   const [searchQuery, setSearchQuery] = useState("");
-  const [referralSummary, setReferralSummary] = useState<ReferralSummaryResponse | null>(null);
 
   useEffect(() => {
-    document.title = "Student Dashboard  -  Collegeconnects";
-  }, []);
-
-  useEffect(() => {
+    document.title = "Student Dashboard | CollegeConnects";
     const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, setAuthUser);
+    return onAuthStateChanged(auth, u => {
+      setAuthUser(u);
+      if (u) {
+        loadProfile(u);
+      } else {
+        // Redirect to signin if session lost
+        navigate({ to: "/auth/signin" });
+      }
+    });
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadProfile = async () => {
-      const u = getFirebaseAuth().currentUser;
-      if (!u) return;
-      try {
-        const token = await u.getIdToken(true);
-        const profile = await getMyStudentProfile(token);
-        if (!cancelled) setStudent(profile);
-      } catch (e) {}
-    };
-    void loadProfile();
-    return () => { cancelled = true; };
-  }, [authUser?.uid]);
+  const loadProfile = async (u: FirebaseUser) => {
+    try {
+      const token = await u.getIdToken(true);
+      const profile = await getMyStudentProfile(token);
+      setStudent(profile);
+    } catch (e) {}
+  };
 
   useEffect(() => {
-    let cancelled = false;
     const loadAdvisors = async () => {
       setAdvisorsLoading(true);
-      setAdvisorsError(null);
       try {
         const list = await getAdvisorsDirectory();
-        if (!cancelled) setAdvisors(Array.isArray(list) ? list : []);
+        setAdvisors(Array.isArray(list) ? list : []);
       } catch (e) {
-        if (!cancelled) {
-          setAdvisorsError(e instanceof Error ? e.message : "Could not load advisors.");
-          setAdvisors([]);
-        }
+        setAdvisors([]);
       } finally {
-        if (!cancelled) setAdvisorsLoading(false);
+        setAdvisorsLoading(false);
       }
     };
     void loadAdvisors();
-    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    if (activeTab !== "sessions" || !authUser) return;
     const loadBookings = async () => {
-      const u = getFirebaseAuth().currentUser;
-      if (!u || activeTab !== "sessions") return;
       try {
-        const token = await u.getIdToken(true);
+        const token = await authUser.getIdToken(true);
         const list = await getMyBookings(token);
-        if (!cancelled) setSessionBookings(list);
+        setSessionBookings(list);
       } catch (e) {
-        if (!cancelled) setSessionBookings([]);
+        setSessionBookings([]);
       }
     };
     void loadBookings();
-    const timer = setInterval(() => void loadBookings(), 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [authUser?.uid, activeTab]);
+  }, [authUser, activeTab]);
 
-  const welcomeName = student?.name || authUser?.displayName || authUser?.email?.split("@")[0] || "Student";
-  const dynamicColleges = ["All Colleges", ...new Set(advisors.map(a => a.college).filter(Boolean).sort())];
-  const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort())];
+  const welcomeName = student?.name || authUser?.displayName || "Student";
+  const dynamicColleges = ["All Colleges", ...new Set(advisors.map(a => a.college).filter(Boolean).sort() as string[])];
+  const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort() as string[])];
 
   const filteredAdvisors = advisors.filter((a) => {
     const name = String(a.name ?? "");
     const college = String(a.college ?? "");
-    const branch = String(a.branch ?? "");
     const collegeMatch = selectedCollege === "All Colleges" || college === selectedCollege;
-    const branchMatch = selectedBranch === "All Branches" || branch === selectedBranch;
-    const searchMatch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                     college.toLowerCase().includes(searchQuery.toLowerCase());
+    const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "") === selectedBranch;
+    const searchMatch = name.toLowerCase().includes(searchQuery.toLowerCase()) || college.toLowerCase().includes(searchQuery.toLowerCase());
     return collegeMatch && branchMatch && searchMatch;
   });
 
   return (
-    <div className="min-h-screen bg-background relative selection:bg-neon-teal/30">
-      <div className="pt-24 pb-20 px-4 sm:px-6 relative z-10 max-w-7xl mx-auto">
-        <header className="mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+    <div className="min-h-screen bg-[#F8FAFC] selection:bg-navy/10 selection:text-navy relative overflow-hidden">
+      {/* Topographic Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(#1E3A8A 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
+      
+      <div className="pt-32 pb-28 sm:pb-24 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground mb-2">
-              Welcome back, <span className="text-neon-teal">{welcomeName}</span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-navy">Student Dashboard</span>
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 mb-3 tracking-tight">
+              Hello, <span className="text-navy">{welcomeName.split(' ')[0]}</span>
             </h1>
-            <p className="text-muted-foreground font-medium">Ready to explore your future colleges?</p>
+            <p className="text-slate-500 font-bold max-w-lg leading-relaxed">
+              Find and connect with verified student advisors.
+            </p>
           </motion.div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex gap-2 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                    activeTab === tab.id 
+                      ? "bg-[#1E3A8A] text-white shadow-lg shadow-navy/20" 
+                      : "text-slate-500 hover:text-navy hover:bg-slate-50"
+                  }`}
+                >
+                  <tab.icon size={14} strokeWidth={3} />
+                  {tab.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {authUser && (
+              <div className="hidden sm:flex items-center gap-4 pl-4 border-l border-slate-200">
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Logged in as</p>
+                  <p className="text-sm font-black text-slate-900 leading-tight truncate max-w-[120px]">{welcomeName}</p>
+                </div>
+                <ProfileDropdown role="student" userName={authUser.displayName || student?.name} avatarUrl={authUser.photoURL || undefined} />
+              </div>
+            )}
+          </div>
         </header>
 
-        <div className="flex gap-2 p-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl w-fit mb-10 overflow-x-auto no-scrollbar">
+        <AnimatePresence mode="wait">
+          {activeTab === "advisors" && (
+            <motion.div
+              key="advisors"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              {/* Search Bar Professional */}
+              <div className="bg-white border border-slate-200 p-2 sm:p-3 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2 items-center">
+                <div className="relative flex-1 w-full">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search advisors, colleges, or courses..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50/50 border-none rounded-xl py-3 pl-12 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-navy/10 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                  <select
+                    value={selectedCollege}
+                    onChange={(e) => setSelectedCollege(e.target.value)}
+                    className="flex-1 md:w-52 bg-white border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-50"
+                  >
+                    {dynamicColleges.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select
+                    value={selectedBranch}
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                    className="flex-1 md:w-52 bg-white border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-50"
+                  >
+                    {dynamicBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {advisorsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="card-solid rounded-2xl h-64 animate-pulse" />
+                  ))}
+                </div>
+              ) : filteredAdvisors.length === 0 ? (
+                <div className="text-center py-24 bg-white border border-slate-200 border-dashed rounded-3xl">
+                  <Search size={40} className="text-slate-200 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">No advisors found</h3>
+                  <p className="text-slate-500 font-medium">Try adjusting your filters or search terms.</p>
+                </div>
+              ) : (
+                <motion.div variants={staggerContainer()} initial="initial" animate="animate" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAdvisors.map((advisor) => (
+                    <AdvisorCard key={advisor.id} advisor={advisor} onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })} />
+                  ))}
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === "sessions" && (
+            <motion.div key="sessions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="card-solid p-6 md:col-span-1 bg-white border-l-4 border-l-navy">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Active Bookings</p>
+                    <p className="text-3xl font-black text-slate-900">{sessionBookings.length}</p>
+                 </div>
+                 <div className="md:col-span-2 flex items-center justify-end">
+                    <button className="btn-secondary h-fit py-2.5 px-6 text-xs flex items-center gap-2">
+                       <Monitor size={14} /> DOWNLOAD HISTORY
+                    </button>
+                 </div>
+              </div>
+
+              {sessionBookings.length === 0 ? (
+                <div className="text-center py-24 card-solid rounded-3xl">
+                  <Calendar size={40} className="text-slate-200 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-900">No sessions scheduled</h3>
+                  <p className="text-slate-500 font-medium mt-1 mb-6">Start your journey by booking a call with an advisor.</p>
+                  <button onClick={() => setActiveTab('advisors')} className="text-orange-600 font-bold hover:gap-2 transition-all inline-flex items-center gap-1.5">
+                    Browse Advisors <ArrowRight size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sessionBookings.map((booking) => (
+                    <BookingCardContent key={booking.id} booking={booking} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === "refer" && (
+            <motion.div key="refer" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
+              <StudentReferEarnPage />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Mobile Sticky Bottom Nav (hidden on sm+) ── */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-around px-2 py-2">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
-                activeTab === tab.id ? "bg-neon-teal text-black shadow-lg shadow-neon-teal/20" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${
+                activeTab === tab.id
+                  ? "text-navy"
+                  : "text-slate-400"
               }`}
             >
-              <tab.icon size={18} />
-              {tab.label}
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                activeTab === tab.id ? "bg-navy/10" : ""
+              }`}>
+                <tab.icon size={20} strokeWidth={activeTab === tab.id ? 3 : 2} />
+              </div>
+              <span className={`text-[10px] font-black tracking-wide ${
+                activeTab === tab.id ? "text-navy" : "text-slate-400"
+              }`}>{tab.label.split(" ")[0].toUpperCase()}</span>
             </button>
           ))}
-        </div>
 
-        {activeTab === "advisors" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative group">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-neon-teal transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Search advisors or colleges..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm outline-none focus:border-neon-teal focus:ring-1 focus:ring-neon-teal/50 transition-all placeholder:text-muted-foreground/50"
-                />
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedCollege}
-                  onChange={(e) => setSelectedCollege(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm outline-none focus:border-neon-teal transition-all appearance-none cursor-pointer"
-                >
-                  {dynamicColleges.map(c => <option key={c} value={c} className="bg-background">{c}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm outline-none focus:border-neon-teal transition-all appearance-none cursor-pointer"
-                >
-                  {dynamicBranches.map(b => <option key={b} value={b} className="bg-background">{b}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
+          {/* Profile avatar on mobile */}
+          {authUser && (
+            <div className="flex flex-col items-center gap-1">
+              <ProfileDropdown
+                role="student"
+                userName={authUser.displayName || student?.name}
+                avatarUrl={authUser.photoURL || undefined}
+              />
+              <span className="text-[10px] font-black text-slate-400 tracking-wide">PROFILE</span>
             </div>
-
-            {advisorsError && (
-              <div className="glass border-red-500/30 p-4 rounded-2xl text-red-400 text-sm flex items-center gap-2">
-                <Star size={18} className="rotate-45" /> {advisorsError}
-              </div>
-            )}
-
-            {advisorsLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="glass rounded-3xl h-64 animate-pulse opacity-50" />
-                ))}
-              </div>
-            ) : filteredAdvisors.length === 0 ? (
-              <div className="text-center py-20 glass rounded-3xl border-dashed">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search size={24} className="text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">No advisors found</h3>
-                <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or search terms.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredAdvisors.map((advisor) => (
-                  <motion.div
-                    key={advisor.id}
-                    layout
-                    whileHover={{ y: -5 }}
-                    className="glass group rounded-3xl border border-white/10 p-6 flex flex-col h-full hover:border-neon-teal/50 transition-all cursor-pointer relative overflow-hidden"
-                    onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })}
-                  >
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-teal to-teal-400 flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-neon-teal/20">
-                        {advisor.name.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-bold text-foreground group-hover:text-neon-teal transition-colors truncate">{advisor.name}</h4>
-                        <p className="text-xs text-muted-foreground font-medium truncate">{advisor.college}</p>
-                        <div className="flex items-center gap-4 mt-2">
-                          <div className="flex items-center gap-1 text-neon-teal text-xs font-bold bg-neon-teal/10 px-2 py-0.5 rounded-full">
-                            <IndianRupee size={12} />
-                            {advisor.session_price}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 mt-2">
-                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{advisor.bio || "Experience the best guidance..."}</p>
-                    </div>
-                    <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
-                      <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{advisor.branch}</p>
-                      <button className="p-2 rounded-xl bg-white/5 group-hover:bg-neon-teal group-hover:text-black transition-all">
-                        <ArrowRight size={16} />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === "sessions" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">My Sessions</h2>
-            {sessionBookings.length === 0 ? (
-              <div className="text-center py-20 glass rounded-3xl">
-                <Calendar size={48} className="mx-auto text-muted-foreground mb-4 opacity-20" />
-                <h3 className="text-lg font-bold text-foreground">No sessions yet</h3>
-                <p className="text-sm text-muted-foreground mt-1">Book your first session with an advisor today!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sessionBookings.map((booking) => (
-                  <BookingCardContent key={booking.id} booking={booking} />
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {activeTab === "refer" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <StudentReferEarnPage />
-          </motion.div>
-        )}
+          )}
+        </div>
+        {/* Home Indicator Safe Area */}
+        <div className="h-safe-area-inset-bottom" />
       </div>
     </div>
   );

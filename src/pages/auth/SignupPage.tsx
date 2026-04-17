@@ -6,9 +6,10 @@ import { requestSignupOtp, verifySignupOtp, registerStudent, registerAdvisor } f
 import { FirebaseError } from "firebase/app";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { signInWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { CheckCircle, Loader, Mail, UserPlus } from "lucide-react";
+import { CheckCircle, Loader, Mail, UserPlus, GraduationCap, ShieldCheck, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthShell } from "./AuthShell";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -22,6 +23,11 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+
+  // Dynamic Theme Colors - Professional Academic Palette (Navy & Mango)
+  const activeColor = role === "student" ? "bg-[#1E3A8A]" : "bg-[#F5A623]";
+  const textColor = role === "student" ? "text-[#1E3A8A]" : "text-[#F5A623]";
+  const accentBorder = role === "student" ? "focus:border-[#1E3A8A]" : "focus:border-[#F5A623]";
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -118,86 +124,164 @@ export default function SignupPage() {
         "Enter the 6-digit code sent to " + email
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         {step === 1 && (
-          <div className="flex p-1 bg-muted rounded-xl gap-1">
-            <button onClick={() => setRole("student")} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${role === "student" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>I'm a Student</button>
-            <button onClick={() => setRole("advisor")} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${role === "advisor" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>I'm an Advisor</button>
+          <div className="relative flex p-1.5 bg-slate-50 border border-slate-100 rounded-2xl gap-1">
+            {/* Sliding Pill Background */}
+            <motion.div
+              layoutId="role-pill"
+              className={`absolute inset-y-1.5 rounded-xl shadow-sm ${activeColor}`}
+              initial={false}
+              animate={{
+                x: role === "student" ? 0 : "100%",
+                left: role === "student" ? "6px" : "-6px",
+                width: "calc(50% - 6px)"
+              }}
+              transition={{ type: "spring", stiffness: 450, damping: 35 }}
+            />
+
+            <button 
+              onClick={() => setRole("student")} 
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "student" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <GraduationCap size={16} strokeWidth={2.5} />
+              I'm a Student
+            </button>
+            <button 
+              onClick={() => setRole("advisor")} 
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "advisor" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <ShieldCheck size={16} strokeWidth={2.5} />
+              I'm an Advisor
+            </button>
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {step === 1 && (
             <>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-muted-foreground">Full Name</label>
-                <input type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm focus:border-neon-teal outline-none" />
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
+                <input 
+                  type="text" 
+                  placeholder="John Doe" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
+                />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-muted-foreground flex justify-between">
-                  Referral Code (Optional)
-                  <span className="text-[10px] opacity-70 italic whitespace-nowrap ml-2">Can be filled later</span>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex justify-between">
+                  Referral Code
+                  <span className="text-[9px] opacity-70 italic font-medium lowercase">optional</span>
                 </label>
-                <input type="text" placeholder="REF123" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm focus:border-neon-teal outline-none" />
+                <input 
+                  type="text" 
+                  placeholder="REF123" 
+                  value={referralCode} 
+                  onChange={(e) => setReferralCode(e.target.value)} 
+                  className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md uppercase tracking-wider`} 
+                />
               </div>
-              <Button onClick={() => name ? nextStep() : alert("Please enter your name")} className={`w-full font-semibold rounded-xl h-11 ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>Next</Button>
+              <Button 
+                onClick={() => name ? nextStep() : alert("Please enter your name")} 
+                className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 mt-2 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
+              >
+                Continue <ArrowRight size={18} className="ml-2" />
+              </Button>
             </>
           )}
 
           {step === 2 && (
             <>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-muted-foreground">Email</label>
-                <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm focus:border-neon-teal outline-none" />
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email Address</label>
+                <input 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
+                />
                 {role === "advisor" && (
-                  <p className={`text-[10px] font-medium mt-1 ${email && isPersonalEmail(email) ? "text-neon-orange animate-pulse" : "text-muted-foreground opacity-80"}`}>
-                    Important: Advisor accounts require a college ID email.
-                  </p>
+                  <div className={`flex items-center gap-2 mt-1 px-1 ${email && isPersonalEmail(email) ? "text-[#F5A623] animate-pulse" : "text-slate-400"}`}>
+                    <ShieldCheck size={12} />
+                    <p className="text-[9px] font-bold uppercase tracking-wide">
+                      Advisors require college ID email.
+                    </p>
+                  </div>
                 )}
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl">Back</Button>
-                <Button onClick={() => email ? nextStep() : alert("Please enter your email")} className={`flex-[2] font-semibold rounded-xl ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>Next</Button>
+              <div className="flex gap-4 mt-2">
+                <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl h-14 font-black uppercase tracking-widest text-[10px]">Back</Button>
+                <Button 
+                  onClick={() => email ? nextStep() : alert("Please enter your email")} 
+                  className={`flex-[2] font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
+                >
+                  Next
+                </Button>
               </div>
             </>
           )}
 
           {step === 3 && (
             <>
-              <PasswordField label="Password" value={password} onChange={setPassword} variant={role === "student" ? "teal" : "orange"} />
-              <div className="flex gap-3 mt-4">
-                <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl">Back</Button>
-                <Button onClick={() => handleSendOtp(false)} disabled={busy} className={`flex-[2] font-semibold rounded-xl ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>
-                  {busy ? <Loader size={18} className="animate-spin" /> : "Verify & Sign Up"}
+              <PasswordField 
+                label="PASSWORD" 
+                value={password} 
+                onChange={setPassword} 
+                className="font-black"
+                variant={role === "student" ? "teal" : "orange"} 
+              />
+              <div className="flex gap-4 mt-6">
+                <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl h-14 font-black uppercase tracking-widest text-[10px]">Back</Button>
+                <Button 
+                  onClick={() => handleSendOtp(false)} 
+                  disabled={busy} 
+                  className={`flex-[2] font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
+                >
+                  {busy ? <Loader size={18} className="animate-spin mx-auto" /> : "Verify & Sign Up"}
                 </Button>
               </div>
             </>
           )}
 
           {step === 4 && (
-            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-muted-foreground">Verification Code</label>
-                <input type="text" placeholder="6-digit code" value={otp} onChange={(e) => setOtp(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm focus:border-neon-teal outline-none tracking-widest" />
+            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Verification Code</label>
+                <input 
+                  type="text" 
+                  placeholder="000000" 
+                  value={otp} 
+                  onChange={(e) => setOtp(e.target.value)} 
+                  className={`bg-white border border-slate-100 rounded-xl px-5 py-4 text-2xl font-black text-center transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md tracking-[0.5em]`} 
+                />
               </div>
-              <Button onClick={handleVerifyAndSignup} disabled={busy} className={`w-full font-semibold rounded-xl h-11 ${role === "student" ? "bg-neon-teal text-background" : "bg-neon-orange text-black"}`}>
-                {busy ? <Loader size={18} className="animate-spin" /> : <><CheckCircle size={18} className="mr-2" />Complete Signup</>}
+              <Button 
+                onClick={handleVerifyAndSignup} 
+                disabled={busy} 
+                className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
+              >
+                {busy ? <Loader size={18} className="animate-spin" /> : <><CheckCircle size={18} className="mr-3" />Finish Signup</>}
               </Button>
               
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-4 py-2">
                 <button 
                   onClick={() => handleSendOtp(true)} 
                   disabled={busy || resendTimer > 0} 
-                  className={`text-sm font-medium transition-colors ${resendTimer > 0 ? "text-muted-foreground cursor-not-allowed" : "text-neon-teal hover:underline"}`}
+                  className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${resendTimer > 0 ? "text-slate-300 cursor-not-allowed" : `${textColor} hover:opacity-80`}`}
                 >
-                  {resendTimer > 0 ? `Resend code in ${resendTimer}s` : "Resend Code"}
+                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend Code"}
                 </button>
-                <button onClick={() => setStep(2)} className="text-xs text-muted-foreground hover:underline text-center">Entered wrong email? Change it here.</button>
+                <button onClick={() => setStep(2)} className="text-[9px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest">Wrong email? Change it</button>
               </div>
             </div>
           )}
 
-          <p className="text-center text-sm text-muted-foreground mt-2">Already have an account? <Link to="/auth/signin" className="text-foreground font-medium hover:underline">Sign In</Link></p>
+          <p className="text-center text-[11px] font-bold text-slate-400 mt-4 uppercase tracking-widest">
+            Member? <Link to="/auth/signin" className="text-foreground transition-colors hover:text-slate-900 border-b border-slate-900 ml-1">Sign In</Link>
+          </p>
         </div>
       </div>
     </AuthShell>

@@ -46,15 +46,8 @@ export function BrandLogo({
   );
 
   const wordmark = withText ? (
-    <span
-      className={cn(
-        "inline-flex items-center",
-        align === "start" ? "justify-start" : "justify-center",
-      )}
-    >
-      <span className="gradient-text-orange text-glow-orange font-display font-bold tracking-tight text-xl sm:text-2xl">
-        Collegeconnects
-      </span>
+    <span className="font-display font-bold tracking-tight text-xl text-slate-900 hidden sm:block">
+      CollegeConnects
     </span>
   ) : null;
 
@@ -62,10 +55,7 @@ export function BrandLogo({
     <span
       className={cn(
         withText
-          ? cn(
-              "inline-flex flex-col gap-1.5 sm:gap-2",
-              align === "start" ? "items-start" : "items-center",
-            )
+          ? "inline-flex flex-row items-center gap-2"
           : "inline-flex items-center",
         className,
       )}
@@ -80,7 +70,7 @@ export function BrandLogo({
       <Link
         to="/"
         className={cn(
-          "inline-flex flex-col outline-none focus-visible:ring-2 focus-visible:ring-neon-teal/50 rounded-lg",
+          "inline-flex flex-col outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A]/50 rounded-lg",
           align === "start" ? "items-start" : "items-center",
         )}
         data-ocid="nav.link"

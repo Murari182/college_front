@@ -1,28 +1,47 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Twitter, Instagram, Linkedin } from "lucide-react";
 
 export default function Footer() {
-  return (
-    <footer className="border-t border-border/40 py-10 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Logo */}
-          <Link
-            to="/"
-            className="inline-flex transition-opacity hover:opacity-95"
-            aria-label="Collegeconnects home"
-          >
-            <BrandLogo size="sm" withText />
-          </Link>
+  const currentYear = new Date().getFullYear();
 
-          {/* Links */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+  return (
+    <footer className="bg-white pt-24 pb-12 px-6 border-t border-slate-100">
+      <div className="container mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20">
+          
+          <div className="max-w-xs">
+            <BrandLogo size="sm" withText />
+            <p className="mt-6 text-sm text-slate-400 font-medium leading-relaxed">
+              Real conversations. Better college decisions.
+            </p>
           </div>
 
+          <nav className="flex flex-wrap gap-x-12 gap-y-4">
+            <Link to="/about" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">About</Link>
+            <Link to="/privacy" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Privacy</Link>
+            <Link to="/terms" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Terms</Link>
+            <Link to="/contact" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Contact</Link>
+          </nav>
+
+        </div>
+
+        <div className="pt-12 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
+            &copy; {currentYear} COLLEGECONNECTS. ALL RIGHTS RESERVED.
+          </p>
+          
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+              <Twitter size={18} />
+            </a>
+            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+              <Instagram size={18} />
+            </a>
+            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+              <Linkedin size={18} />
+            </a>
+          </div>
         </div>
       </div>
     </footer>
