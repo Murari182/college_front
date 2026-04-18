@@ -155,10 +155,14 @@ export default function AdvisorDashboard() {
             {authUser && (
               <div className="hidden sm:flex items-center gap-4 pl-4 border-l border-slate-200">
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Advisor Access</p>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Logged in as</p>
                   <p className="text-sm font-black text-slate-900 leading-tight truncate max-w-[120px]">{welcomeName}</p>
                 </div>
-                <ProfileDropdown role="advisor" userName={authUser.displayName || advisor?.name} avatarUrl={authUser.photoURL || undefined} />
+                <ProfileDropdown 
+                  role="advisor" 
+                  userName={welcomeName} 
+                  avatarUrl={authUser.photoURL || undefined} 
+                />
               </div>
             )}
           </div>

@@ -94,11 +94,20 @@ export default function Navbar() {
         {/* Auth Buttons */}
         <div className="hidden lg:flex items-center gap-8">
           {authUser ? (
-            <ProfileDropdown 
-              role={userRole} 
-              userName={authUser.displayName || undefined} 
-              avatarUrl={authUser.photoURL || undefined}
-            />
+            // Only show profile in global navbar if NOT on a dashboard to avoid the "double profile" look
+            !isDashboard && (
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end text-right">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Logged in as</span>
+                  <span className="text-sm font-black text-slate-900 leading-none">{authUser.displayName || "User"}</span>
+                </div>
+                <ProfileDropdown 
+                  role={userRole} 
+                  userName={authUser.displayName || undefined} 
+                  avatarUrl={authUser.photoURL || undefined}
+                />
+              </div>
+            )
           ) : (
             <>
               <Link to="/auth/signin" className="text-[11px] font-black text-slate-400 hover:text-slate-900 tracking-[0.15em] uppercase">
