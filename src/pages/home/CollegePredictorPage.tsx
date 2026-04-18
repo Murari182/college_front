@@ -1,6 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, GraduationCap, Table2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { onAuthStateChanged, type User } from "firebase/auth";
 
 const JOSAA_2025_URL =
   "https://docs.google.com/spreadsheets/d/1UOihhPYYDPUcLN5coF2-wGxlR7DJQxGR/edit?usp=sharing&ouid=102708880640851630376&rtpof=true&sd=true";
@@ -9,8 +12,24 @@ const JOSAA_2024_URL =
   "https://docs.google.com/spreadsheets/d/1il-AcBuWqMUDY6uvaXmOGATRA1bO1Gme/edit?usp=sharing&ouid=102708880640851630376&rtpof=true&sd=true";
 
 export default function CollegePredictorPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    return onAuthStateChanged(auth, (u) => setUser(u));
+  }, []);
+
+  const handleBack = () => {
+    const role = localStorage.getItem("user_role");
+    if (user && role === "student") navigate({ to: "/student/dashboard" });
+    else if (user && role === "advisor") navigate({ to: "/advisor/dashboard" });
+    else navigate({ to: "/" });
+  };
+
   return (
     <div className="relative min-h-screen px-4 sm:px-6 overflow-hidden">
+      {/* Background Grid Accent omitted content for brevity ... */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div
           className="absolute -top-32 -right-32 w-[480px] h-[480px] rounded-full opacity-20"
@@ -38,22 +57,17 @@ export default function CollegePredictorPage() {
 
       <div className="relative z-10 w-full max-w-2xl mx-auto pt-24 sm:pt-28 pb-16">
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="mb-8"
+           initial={{ opacity: 0, y: -8 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.35 }}
+           className="mb-8"
         >
           <button
-            onClick={() => {
-              const role = localStorage.getItem("user_role");
-              if (role === "student") window.location.href = "/student/dashboard";
-              else if (role === "advisor") window.location.href = "/advisor/dashboard";
-              else window.location.href = "/";
-            }}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
           >
-            <ArrowLeft size={16} aria-hidden />
-            Back to dashboard
+            <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
+            {user ? "Back to dashboard" : "Back to home"}
           </button>
         </motion.div>
 
