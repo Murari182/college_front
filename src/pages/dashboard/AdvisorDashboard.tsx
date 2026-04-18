@@ -203,10 +203,11 @@ export default function AdvisorDashboard() {
                   </div>
                 </div>
 
-                <div className="card-solid rounded-[2rem] p-8 flex flex-col justify-between bg-mango text-white border-none shadow-xl shadow-mango/10">
-                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
-                     <Users size={22} className="text-white" />
-                   </div>
+                <div className="rounded-[2.5rem] p-10 flex flex-col justify-between bg-mango text-white shadow-2xl shadow-mango/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-8 relative z-10">
+                    <Users size={28} className="text-white" />
+                  </div>
                    <div>
                      <p className="text-6xl font-black text-white leading-none tracking-tighter">{advisorTotalStudents}</p>
                      <p className="text-lg font-black text-white mt-1">Students Guided</p>
@@ -279,7 +280,8 @@ export default function AdvisorDashboard() {
 
           {activeTab === "earnings" && (
             <motion.div key="earnings" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-8">
-               <div className="card-solid rounded-[2.5rem] p-10 bg-slate-900 text-white overflow-hidden relative border-none">
+               <div className="rounded-[2.5rem] p-10 bg-slate-900 text-white overflow-hidden relative border-none shadow-2xl shadow-slate-900/20">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-mango/10 rounded-full blur-[100px] -mr-32 -mt-32" />
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-12">
                       <div className="flex items-center gap-5">
