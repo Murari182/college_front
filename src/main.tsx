@@ -34,34 +34,7 @@ function initAnalyticsDeferred() {
   setTimeout(startAnalytics, 800);
 }
 
-function LoadingShell() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#ffffff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          border: "2px solid rgba(30, 58, 138, 0.1)",
-          borderTopColor: "#1E3A8A",
-          borderRadius: "50%",
-          animation: "cc-spin 0.6s linear infinite",
-        }}
-        aria-hidden
-      />
-      <style>{`@keyframes cc-spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
+// LoadingShell removed to eliminate buffering screen entirely
 
 const rootEl = document.getElementById("root")!;
 
@@ -73,7 +46,7 @@ if (!isFirebaseConfigured()) {
 
   ReactDOM.createRoot(rootEl).render(
     <RootErrorBoundary>
-      <Suspense fallback={<LoadingShell />}>
+      <Suspense fallback={null}>
         <MainShell />
       </Suspense>
     </RootErrorBoundary>,
