@@ -48,18 +48,18 @@ export default function WhySection() {
           </motion.div>
 
           {/* Middle Row: The big Headline */}
-          <div className="bg-white p-20 md:col-span-4 flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="bg-white p-8 md:p-20 md:col-span-4 flex flex-col md:flex-row items-center justify-between gap-10">
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1 h-4 bg-[#F5A623]" />
                 <span className="text-[10px] font-black text-[#F5A623] uppercase tracking-[0.2em]">Why Choose Us</span>
               </div>
-              <h2 className="text-5xl md:text-7xl font-extrabold text-[#1E1E1E] leading-[0.9]">
+              <h2 className="text-3xl md:text-7xl font-extrabold text-[#1E1E1E] leading-[1.1] md:leading-[0.9]">
                 Why CollegeConnects<br />
                 <span className="mango-italic">is Different</span>
               </h2>
             </div>
-            <p className="max-w-xs text-sm font-medium text-slate-400 leading-relaxed text-right md:mt-20">
+            <p className="max-w-xs text-sm font-medium text-slate-400 leading-relaxed text-left md:text-right md:mt-20">
               We built the platform we wished existed when we were choosing colleges — a space for real conversations, not scripted showcases.
             </p>
           </div>

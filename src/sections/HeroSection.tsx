@@ -221,25 +221,27 @@ export default function HeroSection() {
             
             {/* Left Content with Parallax */}
             <motion.div style={{ y: textY, scale: textScale, opacity: textOpacity }}>
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-1 h-6 bg-[#F5A623]" />
-                <span className="text-[11px] font-black text-[#F5A623] uppercase tracking-[0.2em]">India's First Student Advisory Platform</span>
+              <div className="flex flex-col items-center lg:items-start gap-3 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-6 bg-[#F5A623]" />
+                  <span className="text-[11px] font-black text-[#F5A623] uppercase tracking-[0.2em] text-center lg:text-left">India's First Student Advisory Platform</span>
+                </div>
               </div>
 
-              <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-[#1E1E1E] leading-[0.9] mb-8">
+              <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-[#1E1E1E] leading-[1.1] md:leading-[0.9] mb-8 text-center lg:text-left">
                 Talk to Real<br />
                 College <span className="mango-italic underline decoration-slate-100 underline-offset-8">Students.</span>
               </h1>
 
-              <p className="text-xl md:text-2xl text-slate-500 font-medium max-w-xl mb-12 leading-relaxed">
+              <p className="text-lg md:text-2xl text-slate-500 font-medium max-w-xl mb-12 leading-relaxed text-center lg:text-left">
                 Connect with verified undergrads from IITs, BITS, and NITs. Get the real truth before you decide your future.
               </p>
 
-              <div className="flex flex-wrap gap-4">
-                <Link to="/auth/signup" className="btn-primary flex items-center gap-2 px-10">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center lg:justify-start">
+                <Link to="/auth/signup" className="btn-primary flex items-center gap-2 px-10 w-full sm:w-auto justify-center">
                   FIND YOUR ADVISOR <ArrowRight size={18} />
                 </Link>
-                <Link to="/how-it-works" className="btn-secondary h-14 flex items-center px-10 uppercase tracking-widest text-[11px] font-black">
+                <Link to="/how-it-works" className="btn-secondary h-14 flex items-center px-10 uppercase tracking-widest text-[11px] font-black w-full sm:w-auto justify-center">
                   How It Works
                 </Link>
               </div>
