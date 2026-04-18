@@ -248,9 +248,12 @@ export default function HeroSection() {
                 <Link to="/auth/signup" className="btn-primary flex items-center gap-2 px-10 h-14 w-full sm:w-auto justify-center text-sm tracking-widest">
                   FIND YOUR ADVISOR <ArrowRight size={18} />
                 </Link>
-                <Link to="/how-it-works" className="btn-secondary h-14 flex items-center px-10 uppercase tracking-widest text-[11px] font-black w-full sm:w-auto justify-center">
+                <button 
+                  onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="btn-secondary h-14 flex items-center px-10 uppercase tracking-widest text-[11px] font-black w-full sm:w-auto justify-center"
+                >
                   How It Works
-                </Link>
+                </button>
               </div>
             </motion.div>
 
