@@ -121,28 +121,53 @@ export default function Navbar() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="lg:hidden absolute top-full left-0 right-0 bg-white border-t border-slate-50 shadow-2xl p-8"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="lg:hidden fixed inset-0 z-[100] bg-white p-8 pt-24"
           >
-            <nav className="flex flex-col gap-6 text-center">
+            {/* Close button inside mobile menu for clarity */}
+            <button className="absolute top-6 right-6 p-2 text-slate-900" onClick={() => setMobileOpen(false)}>
+              <X size={28} />
+            </button>
+
+            <nav className="flex flex-col gap-8 text-center h-full justify-center pb-20">
               {navLinks.map(link => (
                 <button 
                   key={link.href}
                   onClick={() => handleNavClick(link.href)}
-                  className="text-[12px] font-black text-slate-400 uppercase tracking-widest"
+                  className="text-lg font-black text-slate-400 focus:text-[#F5A623] active:text-[#F5A623] uppercase tracking-[0.2em]"
                 >
                   {link.label}
                 </button>
               ))}
-              <div className="pt-6 border-t border-slate-50 flex flex-col gap-4">
+              <div className="pt-10 border-t border-slate-50 flex flex-col gap-6">
                 {authUser ? (
-                  <button onClick={() => getFirebaseAuth().signOut()} className="text-red-500 font-bold">Log Out</button>
+                  <button 
+                    onClick={() => {
+                        getFirebaseAuth().signOut();
+                        setMobileOpen(false);
+                    }} 
+                    className="text-red-500 font-bold uppercase tracking-widest text-sm"
+                  >
+                    Log Out
+                  </button>
                 ) : (
                   <>
-                    <Link to="/auth/signin" className="text-[12px] font-black text-slate-900">SIGN IN</Link>
-                    <Link to="/auth/signup" className="btn-primary py-4">SIGN UP</Link>
+                    <Link 
+                        to="/auth/signin" 
+                        onClick={() => setMobileOpen(false)}
+                        className="text-sm font-black text-slate-900 uppercase tracking-widest"
+                    >
+                        SIGN IN
+                    </Link>
+                    <Link 
+                        to="/auth/signup" 
+                        onClick={() => setMobileOpen(false)}
+                        className="btn-primary py-5 rounded-xl text-sm tracking-widest"
+                    >
+                        SIGN UP
+                    </Link>
                   </>
                 )}
               </div>

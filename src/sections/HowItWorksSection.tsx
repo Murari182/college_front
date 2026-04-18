@@ -39,7 +39,7 @@ function StepCard({ step, i, scrollYProgress }: { step: any, i: number, scrollYP
   return (
     <motion.div
       style={{ y, opacity, scale }}
-      className="bg-[#F8F9FB] p-12 relative group hover:bg-white transition-colors duration-500 border-r border-b border-slate-100"
+      className="bg-[#F8F9FB] p-6 md:p-12 relative group hover:bg-white transition-colors duration-500 border-r border-b border-slate-100"
     >
       {/* Numeric Watermark */}
       <div className="absolute top-10 right-10 text-8xl font-black text-orange-500/5 select-none pointer-events-none group-hover:text-orange-500/10 transition-colors">
@@ -84,12 +84,12 @@ export default function HowItWorksSection() {
       <div className="container mx-auto">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 md:mb-20 gap-6">
           <motion.h2 
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="text-5xl md:text-7xl font-extrabold text-[#1E1E1E]"
+            className="text-3xl md:text-7xl font-extrabold text-[#1E1E1E]"
           >
             How It Works
           </motion.h2>
