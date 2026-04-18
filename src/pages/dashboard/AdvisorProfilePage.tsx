@@ -290,7 +290,7 @@ export default function AdvisorProfilePage() {
                             type={field.type}
                             value={editForm[field.key as keyof typeof editForm] as string} 
                             onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                            className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
+                            className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all"
                           />
                         ) : (
                           <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 truncate">
@@ -320,7 +320,7 @@ export default function AdvisorProfilePage() {
                           <input 
                             value={editForm[field.key as keyof typeof editForm] as string} 
                             onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                            className={`bg-slate-50 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all ${field.mandatory ? "border-slate-200" : "border-slate-100"}`}
+                            className={`bg-slate-50 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all ${field.mandatory ? "border-slate-200" : "border-slate-100"}`}
                           />
                         ) : (
                           <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
@@ -407,7 +407,6 @@ export default function AdvisorProfilePage() {
                       </div>
                     )}
                   </div>
-                </div>
 
                 <div className="flex flex-col gap-2.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
@@ -439,10 +438,10 @@ export default function AdvisorProfilePage() {
                       <select
                         value={editForm.session_price}
                         onChange={e => setEditForm(p => ({...p, session_price: e.target.value}))}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:bg-white focus:border-[#F5A623]/30 appearance-none cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:bg-white focus:border-mango/40 appearance-none cursor-pointer"
                       >
                         {ADVISOR_PRICE_OPTIONS.map(price => (
-                          <option key={price} value={price}>₹{price} / 60 Minute Session</option>
+                          <option key={price} value={price}>₹{price} {" / "} 60 Minute Session</option>
                         ))}
                       </select>
                       <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
@@ -476,9 +475,8 @@ export default function AdvisorProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Identity Verification Section - Redesigned as a featured card */}
+            {/* Identity Verification Section - Redesigned as a featured card */}
           <div className="mt-16 pt-12 border-t border-slate-100">
             <h3 className="text-2xl font-display font-bold text-slate-900 mb-8 flex items-center gap-3">
                <ShieldCheck size={28} className="text-[#F5A623]" /> Identity Documents
@@ -563,7 +561,7 @@ export default function AdvisorProfilePage() {
                   </button>
                 </motion.div>
               ) : (
-                <button onClick={() => setIsEditing(true)} className="w-full bg-slate-50 border-2 border-slate-100 text-slate-600 hover:bg-white hover:border-[#F5A623]/30 font-display font-bold h-16 rounded-[2rem] transition-all flex items-center justify-center gap-2">
+                <button onClick={() => setIsEditing(true)} className="w-full bg-slate-50 border-2 border-slate-100 text-slate-600 hover:bg-white hover:border-mango/40 font-display font-bold h-16 rounded-[2rem] transition-all flex items-center justify-center gap-2">
                    Edit Profile & Settings
                 </button>
               )}
