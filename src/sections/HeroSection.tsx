@@ -202,10 +202,10 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section ref={containerRef} className="relative min-h-[160vh] bg-white pt-32 pb-20 overflow-visible">
+    <section ref={containerRef} className="relative min-h-screen lg:min-h-[160vh] bg-white pt-24 lg:pt-32 pb-20 overflow-visible">
       
-      {/* Sticky Content Container */}
-      <div className="sticky top-0 h-screen flex items-center overflow-hidden">
+      {/* Content Container - Use sticky only on large screens */}
+      <div className="lg:sticky lg:top-0 lg:h-screen flex items-center overflow-visible">
         
         {/* Background Grid Accent */}
         <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none">
@@ -216,29 +216,36 @@ export default function HeroSection() {
           </div>
         </div>
 
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="container mx-auto px-6 relative z-10 w-full">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
-            {/* Left Content with Parallax */}
-            <motion.div style={{ y: textY, scale: textScale, opacity: textOpacity }}>
-              <div className="flex flex-col items-center lg:items-start gap-3 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-6 bg-[#F5A623]" />
-                  <span className="text-[11px] font-black text-[#F5A623] uppercase tracking-[0.2em] text-center lg:text-left">India's First Student Advisory Platform</span>
-                </div>
+            {/* Left Content - Parallax disabled on mobile */}
+            <motion.div 
+              className="flex flex-col items-center lg:items-start"
+              style={{ 
+                y: typeof window !== 'undefined' && window.innerWidth > 1024 ? textY : 0, 
+                scale: typeof window !== 'undefined' && window.innerWidth > 1024 ? textScale : 1, 
+                opacity: typeof window !== 'undefined' && window.innerWidth > 1024 ? textOpacity : 1 
+              }}
+            >
+              <div className="flex items-center gap-3 mb-6 lg:mb-8">
+                <div className="w-1 h-6 bg-[#F5A623]" />
+                <span className="text-[10px] sm:text-[11px] font-black text-[#F5A623] uppercase tracking-[0.2em] text-center lg:text-left">
+                  India's First Student Advisory Platform
+                </span>
               </div>
 
-              <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-[#1E1E1E] leading-[1.1] md:leading-[0.9] mb-8 text-center lg:text-left">
-                Talk to Real<br />
+              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#1E1E1E] leading-[1.1] md:leading-[0.9] mb-6 lg:mb-8 text-center lg:text-left">
+                Talk to Real<br className="hidden sm:block" />
                 College <span className="mango-italic underline decoration-slate-100 underline-offset-8">Students.</span>
               </h1>
 
-              <p className="text-lg md:text-2xl text-slate-500 font-medium max-w-xl mb-12 leading-relaxed text-center lg:text-left">
+              <p className="text-lg md:text-2xl text-slate-500 font-medium max-w-xl mb-10 lg:mb-12 leading-relaxed text-center lg:text-left">
                 Connect with verified undergrads from IITs, BITS, and NITs. Get the real truth before you decide your future.
               </p>
 
-              <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center lg:justify-start">
-                <Link to="/auth/signup" className="btn-primary flex items-center gap-2 px-10 w-full sm:w-auto justify-center">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center lg:justify-start w-full sm:w-auto">
+                <Link to="/auth/signup" className="btn-primary flex items-center gap-2 px-10 h-14 w-full sm:w-auto justify-center text-sm tracking-widest">
                   FIND YOUR ADVISOR <ArrowRight size={18} />
                 </Link>
                 <Link to="/how-it-works" className="btn-secondary h-14 flex items-center px-10 uppercase tracking-widest text-[11px] font-black w-full sm:w-auto justify-center">
@@ -247,10 +254,10 @@ export default function HeroSection() {
               </div>
             </motion.div>
 
-            {/* Right Side: 3D Interactive Cloud Boundary */}
+            {/* Right Side: 3D Interaction Hidden on small mobile for UX, visible on lg */}
             <div 
               ref={cloudRef}
-              className="relative flex items-center justify-center w-full h-[600px] perspective-[2000px] transform-style-3d border-2 border-dashed border-slate-50/50 rounded-[4rem]"
+              className="hidden lg:flex relative items-center justify-center w-full h-[600px] perspective-[2000px] transform-style-3d border-2 border-dashed border-slate-50/50 rounded-[4rem]"
             >
               <div className="absolute inset-0 pointer-events-none z-0">
                  {/* Visual guide for the user that this is the interaction area */}
