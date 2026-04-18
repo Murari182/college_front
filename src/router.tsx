@@ -100,26 +100,7 @@ const routeTree = rootRoute.addChildren([
  * only while there are no matches yet.
  */
 function RouterBootShell({ children }: { children: ReactNode }) {
-  const noMatches = useRouterState({ select: (s) => s.matches.length === 0 });
-
-  return (
-    <>
-      {children}
-      {noMatches ? (
-        <div
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-3 bg-[oklch(0.09_0.01_265)] text-[oklch(0.96_0.005_260)]"
-          role="status"
-          aria-live="polite"
-        >
-          <div
-            className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[oklch(0.67_0.19_40)]"
-            aria-hidden
-          />
-          <p className="text-sm text-white/80">Loading Collegeconnects...</p>
-        </div>
-      ) : null}
-    </>
-  );
+  return <>{children}</>;
 }
 
 function RoutePendingFallback() {
