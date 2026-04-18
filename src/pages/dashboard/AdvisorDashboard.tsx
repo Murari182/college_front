@@ -9,7 +9,7 @@ import {
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight } from "lucide-react";
+import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AdvisorReferEarnPage from "./AdvisorReferEarnPage";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -41,17 +41,17 @@ function StatCard({ label, value, icon: Icon, colorClass, delay = 0 }: { label: 
     <motion.div
       variants={fadeInUp}
       transition={{ delay }}
-      className="card-solid rounded-2xl p-8 group"
+      className="card-solid rounded-2xl p-8 group relative overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-2.5 rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-mango transition-colors`}>
-          <Icon size={20} className={`${colorClass} group-hover:text-white transition-colors`} />
+      <div className="flex items-start justify-between mb-8">
+        <div className={`p-3 rounded-2xl bg-slate-50 border border-slate-100 group-hover:bg-mango transition-all duration-300`}>
+          <Icon size={22} className={`${colorClass} group-hover:text-white transition-colors`} />
         </div>
-        <div className="stat-badge bg-slate-50 text-slate-400">Monthly Avg</div>
+        <div className="stat-badge bg-slate-50 text-slate-500 font-black border-slate-100">MONTHLY</div>
       </div>
-      <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-        <p className={`text-4xl font-extrabold text-slate-900 group-hover:text-mango transition-colors`}>{value}</p>
+      <div className="relative z-10">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</p>
+        <p className={`text-4xl font-black text-slate-900 group-hover:text-mango transition-colors tracking-tight`}>{value}</p>
       </div>
     </motion.div>
   );
@@ -208,9 +208,9 @@ export default function AdvisorDashboard() {
                      <Users size={22} className="text-white" />
                    </div>
                    <div>
-                     <p className="text-5xl font-extrabold text-white">{advisorTotalStudents}</p>
-                     <p className="text-lg font-bold text-mango-light mt-1">Students Guided</p>
-                     <p className="text-xs text-white/80 mt-4 leading-relaxed font-bold">
+                     <p className="text-6xl font-black text-white leading-none tracking-tighter">{advisorTotalStudents}</p>
+                     <p className="text-lg font-black text-white mt-1">Students Guided</p>
+                     <p className="text-sm text-white/90 mt-4 leading-relaxed font-bold">
                        Great job! Your profile response rate is currently in the <span className="text-white font-black underline decoration-white/30 underline-offset-4">top 5%</span>.
                      </p>
                    </div>
@@ -304,10 +304,16 @@ export default function AdvisorDashboard() {
                         <p className="text-[11px] text-slate-500 mt-5 font-medium">* Settlement after 30% platform fee coverage.</p>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-4 mb-2">
-                        <button className="flex-1 btn-primary bg-mango hover:bg-mango-dark border-none px-8 py-5 text-base">
+                        <button 
+                          onClick={() => alert("Banking settlement feature is being enabled for your account. Please check back in 24-48 hours.")}
+                          className="flex-1 btn-primary bg-mango hover:bg-mango-dark border-none px-8 py-5 text-base active:scale-95 transition-transform"
+                        >
                           Transfer to Bank
                         </button>
-                        <button className="flex-1 btn-secondary bg-white/5 border-white/10 hover:bg-white/10 text-white px-8 py-5 text-base font-bold">
+                        <button 
+                          onClick={() => alert("Payout history will be available after your first successful settlement.")}
+                          className="flex-1 btn-secondary bg-white/5 border-white/20 hover:bg-white/10 text-white px-8 py-5 text-base font-bold active:scale-95 transition-transform"
+                        >
                           History
                         </button>
                       </div>
