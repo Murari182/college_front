@@ -54,6 +54,9 @@ export default function Navbar() {
         // Navigate to home with the hash — browser will scroll natively
         window.location.href = "/" + href;
       }
+    } else {
+      // Normal path navigation for About, College Predictor, etc.
+      navigate({ to: href });
     }
   };
 
