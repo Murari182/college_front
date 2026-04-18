@@ -71,9 +71,6 @@ export default function AdvisorDashboard() {
       setAuthUser(u);
       if (u) {
         loadProfile(u);
-      } else {
-        // Redirect if session lost
-        navigate({ to: "/auth/signin" });
       }
     });
   }, []);
@@ -120,12 +117,6 @@ export default function AdvisorDashboard() {
       />
       {/* Dot grid overlay */}
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: `radial-gradient(#F5A623 0.8px, transparent 0.8px)`, backgroundSize: '32px 32px' }} />
-      {/* Floating concentric rings — top left */}
-      <div className="absolute top-32 left-16 w-64 h-64 rounded-full border-[1.5px] border-mango/10 pointer-events-none" />
-      <div className="absolute top-44 left-28 w-40 h-40 rounded-full border border-mango/8 pointer-events-none" />
-      {/* Floating rotated squares — bottom right */}
-      <div className="absolute bottom-40 right-10 w-24 h-24 border border-amber-200/40 rotate-12 rounded-2xl pointer-events-none" />
-      <div className="absolute bottom-60 right-24 w-12 h-12 border border-mango/10 rotate-45 pointer-events-none" />
       
       <div className="pt-32 pb-28 sm:pb-24 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
