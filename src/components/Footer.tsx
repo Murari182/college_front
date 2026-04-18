@@ -32,13 +32,31 @@ export default function Footer() {
           </p>
           
           <div className="flex items-center gap-6">
-            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+            <a 
+              href="https://twitter.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-slate-300 hover:text-navy transition-all duration-300 hover:scale-110"
+              aria-label="Twitter"
+            >
               <Twitter size={18} />
             </a>
-            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+            <a 
+              href="https://instagram.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-slate-300 hover:text-mango transition-all duration-300 hover:scale-110"
+              aria-label="Instagram"
+            >
               <Instagram size={18} />
             </a>
-            <a href="#" className="text-slate-300 hover:text-slate-900 transition-colors">
+            <a 
+              href="https://linkedin.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-slate-300 hover:text-navy transition-all duration-300 hover:scale-110"
+              aria-label="LinkedIn"
+            >
               <Linkedin size={18} />
             </a>
           </div>
