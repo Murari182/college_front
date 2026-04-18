@@ -57,10 +57,15 @@ export type AdvisorProfileResponse = {
   id: string;
   name: string;
   college_email: string;
+  personal_email?: string;
+  gender?: string;
   detected_college: string;
   branch: string;
   phone?: string;
   state?: string;
+  jee_mains_percentile?: string;
+  jee_mains_rank?: string;
+  jee_advanced_rank?: string;
   bio?: string;
   languages: string[];
   preferred_timezones?: string[];

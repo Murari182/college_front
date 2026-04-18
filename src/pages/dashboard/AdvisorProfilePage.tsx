@@ -9,7 +9,7 @@ import {
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera } from "lucide-react";
+import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "249", "299", "399", "499", "599", "999"];
@@ -30,6 +30,12 @@ export default function AdvisorProfilePage() {
     bio: "",
     session_price: "",
     current_study_year: "",
+    jee_mains_percentile: "",
+    jee_mains_rank: "",
+    jee_advanced_rank: "",
+    personal_email: "",
+    gender: "",
+    languages: "",
   });
   
   const [frontFile, setFrontFile] = useState<File | null>(null);
@@ -60,6 +66,12 @@ export default function AdvisorProfilePage() {
         bio: prof.bio || "",
         session_price: prof.session_price || "",
         current_study_year: prof.current_study_year?.toString() || "",
+        jee_mains_percentile: prof.jee_mains_percentile || "",
+        jee_mains_rank: prof.jee_mains_rank || "",
+        jee_advanced_rank: prof.jee_advanced_rank || "",
+        personal_email: prof.personal_email || "",
+        gender: prof.gender || "",
+        languages: prof.languages?.join(", ") || "",
       });
     } catch (err) {
       console.error(err);
@@ -73,7 +85,10 @@ export default function AdvisorProfilePage() {
     setSaving(true);
     try {
       const token = await authUser.getIdToken();
-      let payload: any = { ...editForm };
+      let payload: any = { 
+        ...editForm,
+        languages: editForm.languages.split(",").map(l => l.trim()).filter(l => !!l)
+      };
       
       if (frontFile && backFile) {
         const { frontKey, backKey } = await uploadCollegeIdPairToS3(token, frontFile, backFile);
@@ -161,43 +176,112 @@ export default function AdvisorProfilePage() {
             <div className="space-y-10">
               <div className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-[#F5A623] rounded-full" />
-                <h3 className="text-2xl font-display font-bold text-slate-900">Personal Information</h3>
+                <h3 className="text-2xl font-display font-bold text-slate-900">Personal & Academic</h3>
               </div>
-              <div className="space-y-6">
-                {[
-                  { label: "Full Name", key: "name", type: "text", icon: User },
-                  { label: "Phone Number", key: "phone", type: "tel", icon: Phone },
-                  { label: "Current State", key: "state", type: "text", icon: MapPin },
-                  { label: "Focus Branch", key: "branch", type: "text", icon: GraduationCap },
-                ].map(field => (
-                  <div key={field.key} className="flex flex-col gap-2.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                       <field.icon size={12} strokeWidth={2.5} />
-                       {field.label}
-                    </label>
-                    {isEditing ? (
-                      <input 
-                        value={editForm[field.key as keyof typeof editForm]} 
-                        onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
-                      />
-                    ) : (
-                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
-                        {editForm[field.key as keyof typeof editForm] || "Not provided"}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              
+              <div className="space-y-8">
+                <div className="space-y-5">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-1">Identity & Contact</p>
+                   {[
+                    { label: "Full Name", key: "name", type: "text", icon: User },
+                    { label: "Gender", key: "gender", type: "text", icon: UserCircle },
+                    { label: "Personal Email", key: "personal_email", type: "email", icon: Mail },
+                    { label: "Phone Number", key: "phone", type: "tel", icon: Phone },
+                    { label: "Current State", key: "state", type: "text", icon: MapPin },
+                  ].map(field => (
+                    <div key={field.key} className="flex flex-col gap-2">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                         <field.icon size={11} strokeWidth={2.5} />
+                         {field.label}
+                      </label>
+                      {isEditing ? (
+                        <input 
+                          value={editForm[field.key as keyof typeof editForm]} 
+                          onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
+                          className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+                          {editForm[field.key as keyof typeof editForm] || "Not provided"}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-5 pt-4 border-t border-slate-50">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-1">Academic Merit</p>
+                   {[
+                    { label: "JEE Mains Percentile", key: "jee_mains_percentile", type: "text", icon: Target },
+                    { label: "JEE Mains Rank", key: "jee_mains_rank", type: "text", icon: Award },
+                    { label: "JEE Advanced Rank", key: "jee_advanced_rank", type: "text", icon: Star },
+                  ].map(field => (
+                    <div key={field.key} className="flex flex-col gap-2">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                         <field.icon size={11} strokeWidth={2.5} />
+                         {field.label}
+                      </label>
+                      {isEditing ? (
+                        <input 
+                          value={editForm[field.key as keyof typeof editForm]} 
+                          onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
+                          className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+                          {editForm[field.key as keyof typeof editForm] || "Not provided"}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Right Column: Professional Settings */}
             <div className="space-y-10">
               <div className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-slate-900 rounded-full" />
-                <h3 className="text-2xl font-display font-bold text-slate-900">Service Settings</h3>
+                <h3 className="text-2xl font-display font-bold text-slate-900">Mentorship Profile</h3>
               </div>
+              
               <div className="space-y-6">
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <GraduationCap size={12} strokeWidth={2.5} />
+                     Focus Branch
+                  </label>
+                  {isEditing ? (
+                    <input 
+                      value={editForm.branch} 
+                      onChange={e => setEditForm(p => ({...p, branch: e.target.value}))}
+                      className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
+                    />
+                  ) : (
+                    <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                      {editForm.branch || "Not provided"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <Languages size={12} strokeWidth={2.5} />
+                     Languages (comma separated)
+                  </label>
+                  {isEditing ? (
+                    <input 
+                      value={editForm.languages} 
+                      onChange={e => setEditForm(p => ({...p, languages: e.target.value}))}
+                      placeholder="English, Hindi, Telugu..."
+                      className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
+                    />
+                  ) : (
+                    <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                      {editForm.languages || "Not provided"}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-2.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
                      <IndianRupee size={12} strokeWidth={2.5} />
@@ -233,7 +317,7 @@ export default function AdvisorProfilePage() {
                     <textarea
                       value={editForm.bio}
                       onChange={e => setEditForm(p => ({...p, bio: e.target.value}))}
-                      rows={5}
+                      rows={4}
                       className="bg-slate-50 border border-slate-100 rounded-3xl px-6 py-5 text-sm font-medium outline-none focus:bg-white focus:border-slate-900/10 transition-all resize-none leading-relaxed"
                       placeholder="Showcase your experience..."
                     />
