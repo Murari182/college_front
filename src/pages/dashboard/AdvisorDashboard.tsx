@@ -233,8 +233,8 @@ export default function AdvisorDashboard() {
                   </div>
                   <div className="flex-1 text-center sm:text-left">
                     <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-4">
-                      <span className={`stat-badge ${advisorIsVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'} px-3`}>
-                        {advisorIsVerified ? 'IDENTITY VERIFIED' : 'PENDING REVIEW'}
+                      <span className={`stat-badge ${isCompleteEnough ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'} px-3`}>
+                        {isCompleteEnough ? 'IDENTITY VERIFIED' : 'PENDING REVIEW'}
                       </span>
                     </div>
                     <p className="text-2xl font-bold text-slate-900 mb-1">{advisor?.name}</p>
