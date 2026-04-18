@@ -18,7 +18,6 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
-import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
@@ -232,21 +231,15 @@ export default function StudentDashboard() {
   const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort() as string[])];
 
   const filteredAdvisors = advisors.filter((a) => {
-    // MANDATORY VISIBILITY CHECK (The 50% Gate)
-    // Synchronized with Advisor's own dashboard progress
-    const completionPct = calculateProfileCompletion("advisor", a);
-    const isLive = completionPct >= 50;
-    
-    if (!isLive) return false;
-
     const name = String(a.name ?? "").toLowerCase();
     const college = String(a.college ?? a.detected_college ?? "").toLowerCase();
+    const branch = String(a.branch ?? "").toLowerCase();
     const query = searchQuery.toLowerCase();
-    
+
     const collegeMatch = selectedCollege === "All Colleges" || college.includes(selectedCollege.toLowerCase());
-    const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "").includes(selectedBranch);
-    const searchMatch = query === "" || name.includes(query) || college.includes(query);
-    
+    const branchMatch = selectedBranch === "All Branches" || branch.includes(selectedBranch.toLowerCase());
+    const searchMatch = query === "" || name.includes(query) || college.includes(query) || branch.includes(query);
+
     return collegeMatch && branchMatch && searchMatch;
   });
 
