@@ -46,7 +46,7 @@ export function BrandLogo({
   );
 
   const wordmark = withText ? (
-    <span className="font-display font-bold tracking-tight text-xl text-slate-900 hidden sm:block">
+    <span className="font-display font-bold tracking-tight text-lg sm:text-xl text-slate-900">
       CollegeConnects
     </span>
   ) : null;
