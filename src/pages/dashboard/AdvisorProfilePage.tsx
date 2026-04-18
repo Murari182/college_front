@@ -14,7 +14,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "249", "299", "399", "499", "599", "999"];
+const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "250", "300", "350", "400"];
 
 export default function AdvisorProfilePage() {
   const navigate = useNavigate();
@@ -440,9 +440,32 @@ export default function AdvisorProfilePage() {
                         onChange={e => setEditForm(p => ({...p, session_price: e.target.value}))}
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:bg-white focus:border-mango/40 appearance-none cursor-pointer"
                       >
-                        {ADVISOR_PRICE_OPTIONS.map(price => (
-                          <option key={price} value={price}>₹{price} {" / "} 60 Minute Session</option>
-                        ))}
+                        {ADVISOR_PRICE_OPTIONS.map(price => {
+                          const numeric = Number(price);
+                          const totalSessions = advisor?.total_sessions || 0;
+                          
+                          // Unlock Logic
+                          let isLocked = false;
+                          let unlockRequirement = "";
+                          
+                          if (numeric >= 400) { isLocked = totalSessions < 10; unlockRequirement = "10 sessions"; }
+                          else if (numeric >= 350) { isLocked = totalSessions < 8; unlockRequirement = "8 sessions"; }
+                          else if (numeric >= 300) { isLocked = totalSessions < 5; unlockRequirement = "5 sessions"; }
+                          else if (numeric >= 250) { isLocked = totalSessions < 2; unlockRequirement = "2 sessions"; }
+
+                          return (
+                            <option 
+                              key={price} 
+                              value={price} 
+                              disabled={isLocked}
+                              className={isLocked ? "text-slate-300" : "text-slate-900"}
+                            >
+                              {numeric >= 250 ? "👑 " : "₹"}
+                              {price} 
+                              {isLocked ? ` (Unlocks at ${unlockRequirement})` : " / 60 Minute Session"}
+                            </option>
+                          );
+                        })}
                       </select>
                       <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
                     </div>

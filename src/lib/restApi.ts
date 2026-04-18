@@ -118,7 +118,8 @@ export type StudentProfileResponse = {
 export type AdvisorDirectoryItem = {
   id: string;
   name: string;
-  college: string;
+  college?: string;
+  detected_college?: string;
   branch: string;
   session_price: string;
   current_study_year?: number;

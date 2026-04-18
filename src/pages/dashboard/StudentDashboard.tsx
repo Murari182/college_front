@@ -18,6 +18,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
@@ -231,15 +232,21 @@ export default function StudentDashboard() {
   const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort() as string[])];
 
   const filteredAdvisors = advisors.filter((a) => {
-    // MANDATORY VISIBILITY CHECK (50% Completion Rule)
-    // Must have Branch, ID Card, and JEE Rank
-    const isLive = !!a.branch && !!a.jee_mains_rank && !!a.college_id_front_key;
+    // MANDATORY VISIBILITY CHECK (The 50% Gate)
+    // Synchronized with Advisor's own dashboard progress
+    const completionPct = calculateProfileCompletion("advisor", a);
+    const isLive = completionPct >= 50;
+    
     if (!isLive) return false;
 
-    const name = String(a.name ?? "");
-    const college = String(a.college ?? "");
-    const collegeMatch = selectedCollege === "All Colleges" || college === selectedCollege;
-    const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "") === selectedBranch;
+    const name = String(a.name ?? "").toLowerCase();
+    const college = String(a.college ?? a.detected_college ?? "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    
+    const collegeMatch = selectedCollege === "All Colleges" || college.includes(selectedCollege.toLowerCase());
+    const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "").includes(selectedBranch);
+    const searchMatch = query === "" || name.includes(query) || college.includes(query);
+    
     return collegeMatch && branchMatch && searchMatch;
   });
 
