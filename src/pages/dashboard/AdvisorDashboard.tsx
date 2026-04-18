@@ -9,7 +9,7 @@ import {
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight } from "lucide-react";
+import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AdvisorReferEarnPage from "./AdvisorReferEarnPage";
 import { BrandLogo } from "@/components/BrandLogo";
