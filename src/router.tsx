@@ -107,15 +107,14 @@ function RouterBootShell({ children }: { children: ReactNode }) {
       {children}
       {noMatches ? (
         <div
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-3 bg-[oklch(0.09_0.01_265)] text-[oklch(0.96_0.005_260)]"
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-white"
           role="status"
           aria-live="polite"
         >
           <div
-            className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[oklch(0.67_0.19_40)]"
+            className="h-8 w-8 animate-spin rounded-full border-2 border-slate-100 border-t-navy"
             aria-hidden
           />
-          <p className="text-sm text-white/80">Loading Collegeconnects...</p>
         </div>
       ) : null}
     </>
