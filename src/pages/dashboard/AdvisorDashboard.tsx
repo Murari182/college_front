@@ -314,7 +314,7 @@ export default function AdvisorDashboard() {
                         </button>
                         <button 
                           onClick={() => alert("Payout history will be available after your first successful settlement.")}
-                          className="flex-1 btn-secondary bg-white/5 border-white/20 hover:bg-white/10 text-white px-8 py-5 text-base font-bold active:scale-95 transition-transform"
+                          className="flex-1 bg-white border-2 border-white hover:bg-slate-50 text-mango px-8 py-5 text-base font-black rounded-xl active:scale-95 transition-all shadow-lg shadow-black/10"
                         >
                           History
                         </button>
