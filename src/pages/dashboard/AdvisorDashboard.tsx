@@ -7,9 +7,10 @@ import {
   type BookingResponse,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
+import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3 } from "lucide-react";
+import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AdvisorReferEarnPage from "./AdvisorReferEarnPage";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -101,7 +102,9 @@ export default function AdvisorDashboard() {
   const advisorTotalEarnings = advisor?.total_earnings ?? 0;
   const advisorTotalSessions = advisor?.total_sessions ?? 0;
   const advisorTotalStudents = advisor?.total_students ?? 0;
-  const advisorIsVerified = !!(advisor?.college_id_front_key && advisor?.college_id_back_key);
+  const completionPct = computeProfileCompletion(advisor);
+  const isCompleteEnough = completionPct >= 50;
+  const badge = getCompletionBadge(completionPct);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-mango/10 selection:text-mango relative overflow-hidden">
@@ -122,15 +125,16 @@ export default function AdvisorDashboard() {
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex items-center gap-2 mb-3">
-               <span className="stat-badge bg-emerald-50 text-emerald-700 border-emerald-100 flex items-center gap-1 px-2.5">
-                <CheckCircle2 size={10} /> ADVISOR PORTAL
+               <span className={`stat-badge flex items-center gap-1 px-2.5 ${isCompleteEnough ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-amber-50 text-amber-700 border-amber-100"}`}>
+                {isCompleteEnough ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />}
+                {isCompleteEnough ? "ADVISOR PORTAL ACTIVE" : "REGISTRATION PENDING"}
               </span>
             </div>
             <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
-              Welcome back, <span className="text-mango">{welcomeName}</span>
+              Hello, <span className="text-mango">{welcomeName}</span>
             </h1>
             <p className="text-slate-500 font-bold mt-2 max-w-md leading-relaxed">
-              Manage your availability and track your impact.
+              {isCompleteEnough ? "Manage your availability and track your impact." : "Please complete your verification to start guiding students."}
             </p>
           </motion.div>
           
@@ -139,8 +143,9 @@ export default function AdvisorDashboard() {
               {TABS.map(tab => (
                 <button
                   key={tab.id}
+                  disabled={!isCompleteEnough && tab.id !== "overview"}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black transition-all whitespace-nowrap disabled:opacity-30 disabled:grayscale ${
                     activeTab === tab.id
                       ? "bg-[#F5A623] text-white shadow-lg shadow-mango/20"
                       : "text-slate-500 hover:text-mango-dark hover:bg-slate-50"
@@ -169,7 +174,51 @@ export default function AdvisorDashboard() {
         </header>
 
         <AnimatePresence mode="wait">
-          {activeTab === "overview" && (
+          {!isCompleteEnough ? (
+            <motion.div 
+               key="locked" 
+               initial={{ opacity: 0, scale: 0.98 }} 
+               animate={{ opacity: 1, scale: 1 }} 
+               className="card-solid rounded-[3rem] p-12 overflow-hidden relative flex flex-col items-center text-center py-24"
+            >
+               <div className="absolute top-0 right-0 w-64 h-64 bg-mango/5 blur-3xl -mr-32 -mt-32 rounded-full" />
+               <div className="w-24 h-24 rounded-[2rem] bg-mango/10 flex items-center justify-center text-mango mb-8">
+                  <ShieldCheck size={48} strokeWidth={3} />
+               </div>
+               <h2 className="text-4xl font-display font-black text-slate-900 mb-4">Verification Required</h2>
+               <p className="text-slate-500 font-bold max-w-sm mx-auto mb-10 leading-relaxed text-lg">
+                 You are currently at <span className={badge.color}>{completionPct}%</span> completion. Reach 50% to unlock the dashboard.
+               </p>
+               
+               <div className="w-full max-w-md bg-slate-50 h-3 rounded-full overflow-hidden border border-slate-100 mb-12">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionPct}%` }}
+                    className={`h-full transition-all duration-1000 ${badge.color.replace('text-', 'bg-')}`}
+                  />
+               </div>
+               
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-2xl mb-12">
+                 {[
+                   { label: "Branch Name", done: !!advisor?.branch },
+                   { label: "College ID Card", done: !!advisor?.college_id_front_key },
+                   { label: "JEE Mains Rank", done: !!advisor?.jee_mains_rank },
+                 ].map((req, i) => (
+                    <div key={i} className={`p-4 rounded-2xl border flex items-center gap-3 ${req.done ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-slate-50 border-slate-100 text-slate-400 opacity-60"}`}>
+                       {req.done ? <CheckCircle2 size={16} strokeWidth={3} /> : <div className="w-4 h-4 rounded-full border-2 border-slate-200" />}
+                       <span className="text-xs font-black uppercase tracking-widest">{req.label}</span>
+                    </div>
+                 ))}
+               </div>
+
+               <button 
+                onClick={() => navigate({ to: "/advisor/profile" })}
+                className="btn-primary h-16 px-12 text-sm bg-mango hover:bg-mango-dark flex items-center gap-3 shadow-2xl shadow-mango/30"
+               >
+                 COMPLETE 50% TO UNLOCK <ArrowRight size={20} />
+               </button>
+            </motion.div>
+          ) : activeTab === "overview" && (
             <motion.div key="overview" variants={staggerContainer()} initial="initial" animate="animate" exit={{ opacity: 0, y: -10 }} className="space-y-10">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <StatCard label="Total Earnings" value={`₹${advisorTotalEarnings}`} icon={IndianRupee} colorClass="text-emerald-600" delay={0.1} />

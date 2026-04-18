@@ -57,11 +57,21 @@ export type AdvisorProfileResponse = {
   id: string;
   name: string;
   college_email: string;
+  personal_email?: string;
+  gender?: string;
   detected_college: string;
   branch: string;
   phone?: string;
   state?: string;
+  upi_id?: string;
+  date_of_birth?: string;
+  roll_number?: string;
+  jee_mains_percentile?: string;
+  jee_mains_rank?: string;
+  jee_advanced_rank?: string;
   bio?: string;
+  skills?: string;
+  achievements?: string;
   languages: string[];
   preferred_timezones?: string[];
   session_price: string;
@@ -118,6 +128,8 @@ export type AdvisorDirectoryItem = {
   bio?: string;
   languages: string[];
   preferred_timezones?: string[];
+  jee_mains_rank?: string;
+  college_id_front_key?: string;
 };
 
 /** Public advisor profile from GET /api/advisors/id/{id} (Mongo fields, snake_case after normalize). */

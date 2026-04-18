@@ -231,11 +231,15 @@ export default function StudentDashboard() {
   const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort() as string[])];
 
   const filteredAdvisors = advisors.filter((a) => {
+    // MANDATORY VISIBILITY CHECK (50% Completion Rule)
+    // Must have Branch, ID Card, and JEE Rank
+    const isLive = !!a.branch && !!a.jee_mains_rank && !!a.college_id_front_key;
+    if (!isLive) return false;
+
     const name = String(a.name ?? "");
     const college = String(a.college ?? "");
     const collegeMatch = selectedCollege === "All Colleges" || college === selectedCollege;
     const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "") === selectedBranch;
-    const searchMatch = name.toLowerCase().includes(searchQuery.toLowerCase()) || college.toLowerCase().includes(searchQuery.toLowerCase());
     return collegeMatch && branchMatch && searchMatch;
   });
 

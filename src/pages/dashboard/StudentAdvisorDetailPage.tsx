@@ -259,26 +259,30 @@ export default function StudentAdvisorDetailPage() {
             </div>
 
             <div className="space-y-4 mb-6">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Bio</p>
-                <p className="text-sm text-foreground font-medium whitespace-pre-wrap">
-                  {advisor.bio?.trim() || " - "}
-                </p>
-              </div>
+              {advisor.bio?.trim() && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Bio</p>
+                  <p className="text-sm text-foreground font-medium whitespace-pre-wrap">
+                    {advisor.bio.trim()}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {row("gender", advisor.gender?.trim() || "")}
-                {row("state", advisor.state?.trim() || "")}
-                {row("JEE Mains percentile", advisor.jee_mains_percentile?.trim() || "")}
-                {row("JEE Mains rank", advisor.jee_mains_rank?.trim() || "")}
-                {row("JEE Advanced rank", advisor.jee_advanced_rank?.trim() || "")}
+                {advisor.gender?.trim() && row("gender", advisor.gender.trim())}
+                {advisor.state?.trim() && row("state", advisor.state.trim())}
+                {advisor.jee_mains_percentile?.trim() && row("JEE Mains percentile", advisor.jee_mains_percentile.trim())}
+                {row("JEE Mains rank", advisor.jee_mains_rank?.trim() || " - ")}
+                {advisor.jee_advanced_rank?.trim() && row("JEE Advanced rank", advisor.jee_advanced_rank.trim())}
                 {row("Current year", studyYearLabel)}
-                {row("Session price", sessionPrice > 0 ? `₹${sessionPrice}` : " - ")}
+                {sessionPrice > 0 && row("Session price", `₹${sessionPrice}`)}
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                {row("languages", formatLanguages(advisor))}
-              </div>
+              {formatLanguages(advisor) !== " - " && (
+                <div className="grid grid-cols-1 gap-3">
+                  {row("languages", formatLanguages(advisor))}
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Preferred time slots</p>

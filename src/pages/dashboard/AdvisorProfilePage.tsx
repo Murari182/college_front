@@ -4,12 +4,14 @@ import {
   getMyAdvisorProfile,
   updateMyAdvisorProfile,
   uploadCollegeIdPairToS3,
+  uploadProfilePictureToS3,
   type AdvisorProfileResponse,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
+import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera } from "lucide-react";
+import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "249", "299", "399", "499", "599", "999"];
@@ -30,10 +32,22 @@ export default function AdvisorProfilePage() {
     bio: "",
     session_price: "",
     current_study_year: "",
+    jee_mains_percentile: "",
+    jee_mains_rank: "",
+    jee_advanced_rank: "",
+    personal_email: "",
+    gender: "",
+    languages: "",
+    detected_college: "",
+    college_id_acknowledged: false,
+    skills: "",
+    achievements: "",
   });
   
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
@@ -60,6 +74,16 @@ export default function AdvisorProfilePage() {
         bio: prof.bio || "",
         session_price: prof.session_price || "",
         current_study_year: prof.current_study_year?.toString() || "",
+        jee_mains_percentile: prof.jee_mains_percentile || "",
+        jee_mains_rank: prof.jee_mains_rank || "",
+        jee_advanced_rank: prof.jee_advanced_rank || "",
+        personal_email: prof.personal_email || "",
+        gender: prof.gender || "",
+        languages: prof.languages?.join(", ") || "",
+        detected_college: prof.detected_college || "",
+        college_id_acknowledged: !!prof.college_id_front_key, 
+        skills: prof.skills || "",
+        achievements: prof.achievements || "",
       });
     } catch (err) {
       console.error(err);
@@ -73,12 +97,20 @@ export default function AdvisorProfilePage() {
     setSaving(true);
     try {
       const token = await authUser.getIdToken();
-      let payload: any = { ...editForm };
+      let payload: any = { 
+        ...editForm,
+        languages: editForm.languages.split(",").map(l => l.trim()).filter(l => !!l)
+      };
       
       if (frontFile && backFile) {
         const { frontKey, backKey } = await uploadCollegeIdPairToS3(token, frontFile, backFile);
         payload.college_id_front_key = frontKey;
         payload.college_id_back_key = backKey;
+      }
+
+      if (avatarFile) {
+        const photoKey = await uploadProfilePictureToS3(token, "advisor", avatarFile);
+        payload.profile_picture = photoKey;
       }
 
       const updated = await updateMyAdvisorProfile(token, payload);
@@ -115,16 +147,59 @@ export default function AdvisorProfilePage() {
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="glass-dashboard rounded-[3rem] p-8 sm:p-12">
           
+          {/* Path to Elite: Progress Bar */}
+          <div className="mb-12">
+            <div className="flex justify-between items-end mb-4">
+               <div>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Success Progress</p>
+                  <h4 className="text-xl font-display font-black text-slate-900 flex items-center gap-2">
+                     Path to <span className={getCompletionBadge(computeProfileCompletion(advisor)).color}>
+                       {getCompletionBadge(computeProfileCompletion(advisor)).label} Mentor
+                     </span>
+                  </h4>
+               </div>
+               <div className="text-right">
+                  <p className="text-2xl font-black text-slate-900 leading-none">{computeProfileCompletion(advisor)}<span className="text-xs text-slate-300 ml-1">%</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Next: {getCompletionBadge(computeProfileCompletion(advisor)).next}
+                  </p>
+               </div>
+            </div>
+            <div className="h-4 w-full bg-slate-50 rounded-full border border-slate-100 overflow-hidden p-0.5">
+               <motion.div 
+                 initial={{ width: 0 }}
+                 animate={{ width: `${computeProfileCompletion(advisor)}%` }}
+                 className={`h-full rounded-full transition-all duration-1000 ${
+                    computeProfileCompletion(advisor) < 50 ? "bg-red-500 shadow-[0_0_20px_-5px_rgba(239,68,68,0.5)]" :
+                    computeProfileCompletion(advisor) < 80 ? "bg-amber-500 shadow-[0_0_20px_-5px_rgba(245,158,11,0.5)]" :
+                    "bg-emerald-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)]"
+                 }`}
+               />
+            </div>
+          </div>
+
           {/* Header Profile */}
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-10 mb-12 border-b border-slate-100 pb-12">
             <div className="shrink-0 relative">
                <div className="w-40 h-40 rounded-[3rem] bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-4 border-white shadow-2xl relative overflow-hidden group">
-                 <span className="text-5xl font-display font-bold text-slate-800">
-                    {advisor?.name?.split(" ").map(n => n[0]).slice(0, 2).join("")}
-                 </span>
-                 <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                 {avatarPreview || advisor?.profile_picture ? (
+                   <img src={avatarPreview || `https://collegeconnects-profile-pics.s3.amazonaws.com/${advisor?.profile_picture}`} className="w-full h-full object-cover" />
+                 ) : (
+                   <span className="text-5xl font-display font-bold text-slate-800">
+                      {advisor?.name?.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                   </span>
+                 )}
+                 <label className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                     <Camera size={24} className="text-white" />
-                 </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setAvatarFile(f);
+                        setAvatarPreview(URL.createObjectURL(f));
+                        setIsEditing(true);
+                      }
+                    }} />
+                 </label>
                </div>
                {advisor?.college_id_front_key && (
                  <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-2xl border-4 border-white shadow-lg">
@@ -142,7 +217,20 @@ export default function AdvisorProfilePage() {
                  <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Expert Advisor Since 2024</span>
                </div>
                <h1 className="text-4xl font-display font-bold text-slate-900 mb-3 tracking-tight truncate">{advisor?.name}</h1>
-               <p className="text-lg font-medium text-slate-500 mb-4">{advisor?.detected_college} • <span className="text-slate-900">{advisor?.branch}</span></p>
+                <div className="flex items-center gap-2 text-lg font-medium text-slate-500 mb-4">
+                  {isEditing ? (
+                    <input 
+                      value={editForm.detected_college}
+                      onChange={e => setEditForm(p => ({...p, detected_college: e.target.value}))}
+                      placeholder="Enter College Name"
+                      className="bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-900 focus:outline-none"
+                    />
+                  ) : (
+                    <span>{advisor?.detected_college}</span>
+                  )}
+                  <span>•</span>
+                  <span className="text-slate-900">{advisor?.branch}</span>
+                </div>
                <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
                   <span className="flex items-center gap-1.5"><Mail size={14} className="text-[#F5A623]" /> {authUser?.email?.split('@')[0]}</span>
                   <span className="flex items-center gap-1.5 font-display text-slate-700">{formatStudyYearLabel(effectiveYear)} Student</span>
@@ -156,48 +244,191 @@ export default function AdvisorProfilePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Left Column: Basic Details */}
+            {isEditing && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-10 p-6 bg-blue-50 border border-blue-100 rounded-[2rem] flex items-start gap-4"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-blue-100">
+                  <ShieldCheck className="text-blue-600" size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 mb-1">Advisor Verification Policy</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    To maintain platform integrity, your profile becomes visible to students ONLY once you complete:
+                    <span className="text-blue-700 font-bold ml-1">Branch, College ID, and JEE Mains Rank.</span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             <div className="space-y-10">
               <div className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-[#F5A623] rounded-full" />
-                <h3 className="text-2xl font-display font-bold text-slate-900">Personal Information</h3>
+                <h3 className="text-2xl font-display font-bold text-slate-900">Personal & Academic</h3>
               </div>
-              <div className="space-y-6">
-                {[
-                  { label: "Full Name", key: "name", type: "text", icon: User },
-                  { label: "Phone Number", key: "phone", type: "tel", icon: Phone },
-                  { label: "Current State", key: "state", type: "text", icon: MapPin },
-                  { label: "Focus Branch", key: "branch", type: "text", icon: GraduationCap },
-                ].map(field => (
-                  <div key={field.key} className="flex flex-col gap-2.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                       <field.icon size={12} strokeWidth={2.5} />
-                       {field.label}
-                    </label>
-                    {isEditing ? (
-                      <input 
-                        value={editForm[field.key as keyof typeof editForm]} 
-                        onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
-                      />
-                    ) : (
-                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
-                        {editForm[field.key as keyof typeof editForm] || "Not provided"}
+              
+              <div className="space-y-8">
+                <div className="space-y-5">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-1">Identity & Contact</p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                     {[
+                      { label: "Full Name", key: "name", type: "text", icon: User },
+                      { label: "Gender", key: "gender", type: "text", icon: UserCircle },
+                      { label: "Personal Email", key: "personal_email", type: "email", icon: Mail },
+                      { label: "Phone Number", key: "phone", type: "tel", icon: Phone },
+                      { label: "Current State", key: "state", type: "text", icon: MapPin },
+                    ].map(field => (
+                      <div key={field.key} className="flex flex-col gap-2">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                           <field.icon size={11} strokeWidth={2.5} />
+                           {field.label}
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type={field.type}
+                            value={editForm[field.key as keyof typeof editForm] as string} 
+                            onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
+                            className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all"
+                          />
+                        ) : (
+                          <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 truncate">
+                            {editForm[field.key as keyof typeof editForm] || "Not provided"}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                <div className="space-y-5 pt-4 border-t border-slate-50">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-1">Academic Merit</p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {[
+                      { label: "JEE Mains Percentile", key: "jee_mains_percentile", type: "text", icon: Target },
+                      { label: "JEE Mains Rank", key: "jee_mains_rank", type: "text", icon: Award, mandatory: true },
+                      { label: "JEE Advanced Rank", key: "jee_advanced_rank", type: "text", icon: Star },
+                    ].map(field => (
+                      <div key={field.key} className="flex flex-col gap-2">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                           <field.icon size={11} strokeWidth={2.5} />
+                           {field.label}
+                           {field.mandatory && <span className="text-red-500 ml-0.5">*</span>}
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            value={editForm[field.key as keyof typeof editForm] as string} 
+                            onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
+                            className={`bg-slate-50 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-[#F5A623]/30 outline-none transition-all ${field.mandatory ? "border-slate-200" : "border-slate-100"}`}
+                          />
+                        ) : (
+                          <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+                            {editForm[field.key as keyof typeof editForm] || "Not provided"}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                           <Clock size={11} strokeWidth={2.5} />
+                           Current Study Year
+                        </label>
+                        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+                          {formatStudyYearLabel(effectiveYear)}
+                        </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Right Column: Professional Settings */}
             <div className="space-y-10">
               <div className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-slate-900 rounded-full" />
-                <h3 className="text-2xl font-display font-bold text-slate-900">Service Settings</h3>
+                <h3 className="text-2xl font-display font-bold text-slate-900">Mentorship Portfolio</h3>
               </div>
+              
               <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="flex flex-col gap-2.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                       <GraduationCap size={12} strokeWidth={2.5} />
+                       Focus Branch <span className="text-red-500">*</span>
+                    </label>
+                    {isEditing ? (
+                      <input 
+                        value={editForm.branch} 
+                        onChange={e => setEditForm(p => ({...p, branch: e.target.value}))}
+                        className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
+                      />
+                    ) : (
+                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                        {editForm.branch || "Not provided"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                       <Languages size={12} strokeWidth={2.5} />
+                       Languages
+                    </label>
+                    {isEditing ? (
+                      <input 
+                        value={editForm.languages} 
+                        onChange={e => setEditForm(p => ({...p, languages: e.target.value}))}
+                        placeholder="English, Hindi..."
+                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
+                      />
+                    ) : (
+                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                        {editForm.languages || "Not provided"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                       <Award size={12} strokeWidth={2.5} />
+                       Key Skills (Optional)
+                    </label>
+                    {isEditing ? (
+                      <input 
+                        value={editForm.skills} 
+                        onChange={e => setEditForm(p => ({...p, skills: e.target.value}))}
+                        placeholder="e.g. Data Structures, Physics Mentor"
+                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
+                      />
+                    ) : (
+                      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                        {editForm.skills || "Not provided"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                     <Star size={12} strokeWidth={2.5} />
+                     Major Achievements (Optional)
+                  </label>
+                  {isEditing ? (
+                    <textarea 
+                      value={editForm.achievements} 
+                      onChange={e => setEditForm(p => ({...p, achievements: e.target.value}))}
+                      placeholder="Scholarships, rank milestones..."
+                      rows={2}
+                      className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all resize-none"
+                    />
+                  ) : (
+                    <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
+                      {editForm.achievements || "Not provided"}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-2.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
                      <IndianRupee size={12} strokeWidth={2.5} />
@@ -233,12 +464,12 @@ export default function AdvisorProfilePage() {
                     <textarea
                       value={editForm.bio}
                       onChange={e => setEditForm(p => ({...p, bio: e.target.value}))}
-                      rows={5}
-                      className="bg-slate-50 border border-slate-100 rounded-3xl px-6 py-5 text-sm font-medium outline-none focus:bg-white focus:border-slate-900/10 transition-all resize-none leading-relaxed"
+                      rows={3}
+                      className="bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-medium outline-none focus:bg-white focus:border-slate-900/10 transition-all resize-none leading-relaxed"
                       placeholder="Showcase your experience..."
                     />
                   ) : (
-                    <div className="bg-white border border-slate-100 rounded-3xl px-6 py-5 text-sm text-slate-500 font-medium leading-relaxed italic">
+                    <div className="bg-white border border-slate-100 rounded-2xl px-6 py-4 text-sm text-slate-500 font-medium leading-relaxed italic">
                       "{editForm.bio || "No professional bio provided yet. Your bio helps students understand your expertise."}"
                     </div>
                   )}
@@ -254,34 +485,58 @@ export default function AdvisorProfilePage() {
             </h3>
             
             {!advisor?.college_id_front_key ? (
-              <div className="bg-slate-900 text-white rounded-[2.5rem] p-8 sm:p-10 flex flex-col md:flex-row items-center gap-10 shadow-2xl relative overflow-hidden">
+              <div className="bg-slate-900 text-white rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-[#F5A623]/10 blur-[90px] rounded-full -mr-32 -mt-32" />
-                <div className="w-16 h-16 rounded-3xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                  <Upload size={32} className="text-[#F5A623]" />
-                </div>
-                <div className="flex-1 text-center md:text-left relative z-10">
-                  <p className="text-2xl font-display font-bold mb-2">Verification Required</p>
-                  <p className="text-slate-400 font-medium leading-relaxed">
-                    To maintain trust, all advisors must upload their official college ID. This is not shared publicly.
-                  </p>
-                </div>
                 
-                {isEditing ? (
-                  <div className="flex gap-4 relative z-10">
-                    <label className="cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-4 rounded-2xl border border-dashed border-white/20 transition-all flex flex-col items-center gap-1">
-                      <Camera size={20} className={frontFile ? "text-emerald-400" : "text-slate-300"} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">{frontFile ? "Front Ready" : "Front Side"}</span>
-                      <input type="file" className="hidden" onChange={e => setFrontFile(e.target.files?.[0] || null)} />
-                    </label>
-                    <label className="cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-4 rounded-2xl border border-dashed border-white/20 transition-all flex flex-col items-center gap-1">
-                      <Camera size={20} className={backFile ? "text-emerald-400" : "text-slate-300"} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">{backFile ? "Back Ready" : "Back Side"}</span>
-                      <input type="file" className="hidden" onChange={e => setBackFile(e.target.files?.[0] || null)} />
+                <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
+                  <div className="w-16 h-16 rounded-3xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
+                    <Upload size={32} className="text-[#F5A623]" />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <p className="text-2xl font-display font-bold mb-2">Institutional Verification</p>
+                    <p className="text-slate-400 font-medium leading-relaxed">
+                      All experts must provide their official ID card. We use this strictly for verification purposes to ensure the integrity of our advisory pool.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-white/5 space-y-6 relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-3">
+                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                         College ID (Front) <span className="text-red-500">*</span>
+                       </label>
+                       <label className={`cursor-pointer group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 ${frontFile ? "bg-emerald-500/10 border-emerald-500/50" : "bg-white/5 border-white/10 hover:border-[#F5A623]/40"}`}>
+                          <Camera size={24} className={frontFile ? "text-emerald-400" : "text-slate-500 group-hover:text-[#F5A623]"} />
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${frontFile ? "text-emerald-400" : "text-slate-500"}`}>{frontFile ? "Ready for Upload" : "Select Image"}</span>
+                          <input type="file" className="hidden" accept="image/*" onChange={e => setFrontFile(e.target.files?.[0] || null)} />
+                       </label>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                         College ID (Back) <span className="text-red-500">*</span>
+                       </label>
+                       <label className={`cursor-pointer group h-32 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 ${backFile ? "bg-emerald-500/10 border-emerald-500/50" : "bg-white/5 border-white/10 hover:border-[#F5A623]/40"}`}>
+                          <Camera size={24} className={backFile ? "text-emerald-400" : "text-slate-500 group-hover:text-[#F5A623]"} />
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${backFile ? "text-emerald-400" : "text-slate-500"}`}>{backFile ? "Ready for Upload" : "Select Image"}</span>
+                          <input type="file" className="hidden" accept="image/*" onChange={e => setBackFile(e.target.files?.[0] || null)} />
+                       </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                    <input 
+                      type="checkbox" 
+                      id="id_ack"
+                      checked={editForm.college_id_acknowledged}
+                      onChange={e => setEditForm(p => ({...p, college_id_acknowledged: e.target.checked}))}
+                      className="mt-1 accent-[#F5A623]" 
+                    />
+                    <label htmlFor="id_ack" className="text-xs text-slate-400 leading-relaxed cursor-pointer select-none">
+                      I hereby confirm that I am a current student at <span className="text-white font-bold">{editForm.detected_college || "my detected college"}</span> and the documents provided are authentic and valid.
                     </label>
                   </div>
-                ) : (
-                    <button onClick={() => setIsEditing(true)} className="bg-[#F5A623] text-slate-900 px-8 py-4 rounded-2xl text-sm font-bold shadow-xl shadow-[#F5A623]/20 hover:scale-105 transition-transform">Complete Setup</button>
-                )}
+                </div>
               </div>
             ) : (
               <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2.5rem] p-10 flex items-center gap-8 shadow-sm">
