@@ -7,6 +7,7 @@ import {
   type BookingResponse,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
+import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3, AlertTriangle } from "lucide-react";
@@ -101,7 +102,9 @@ export default function AdvisorDashboard() {
   const advisorTotalEarnings = advisor?.total_earnings ?? 0;
   const advisorTotalSessions = advisor?.total_sessions ?? 0;
   const advisorTotalStudents = advisor?.total_students ?? 0;
-  const isCompleteEnough = !!advisor?.branch && !!advisor?.jee_mains_rank && !!advisor?.college_id_front_key;
+  const completionPct = computeProfileCompletion(advisor);
+  const isCompleteEnough = completionPct >= 50;
+  const badge = getCompletionBadge(completionPct);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-mango/10 selection:text-mango relative overflow-hidden">
@@ -184,8 +187,16 @@ export default function AdvisorDashboard() {
                </div>
                <h2 className="text-4xl font-display font-black text-slate-900 mb-4">Verification Required</h2>
                <p className="text-slate-500 font-bold max-w-sm mx-auto mb-10 leading-relaxed text-lg">
-                 Complete at least 50% of your profile to unlock the full Advisor Dashboard and go Live for students.
+                 You are currently at <span className={badge.color}>{completionPct}%</span> completion. Reach 50% to unlock the dashboard.
                </p>
+               
+               <div className="w-full max-w-md bg-slate-50 h-3 rounded-full overflow-hidden border border-slate-100 mb-12">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionPct}%` }}
+                    className={`h-full transition-all duration-1000 ${badge.color.replace('text-', 'bg-')}`}
+                  />
+               </div>
                
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-2xl mb-12">
                  {[

@@ -8,6 +8,7 @@ import {
   type AdvisorProfileResponse,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
+import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
@@ -146,6 +147,37 @@ export default function AdvisorProfilePage() {
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} className="glass-dashboard rounded-[3rem] p-8 sm:p-12">
           
+          {/* Path to Elite: Progress Bar */}
+          <div className="mb-12">
+            <div className="flex justify-between items-end mb-4">
+               <div>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Success Progress</p>
+                  <h4 className="text-xl font-display font-black text-slate-900 flex items-center gap-2">
+                     Path to <span className={getCompletionBadge(computeProfileCompletion(advisor)).color}>
+                       {getCompletionBadge(computeProfileCompletion(advisor)).label} Mentor
+                     </span>
+                  </h4>
+               </div>
+               <div className="text-right">
+                  <p className="text-2xl font-black text-slate-900 leading-none">{computeProfileCompletion(advisor)}<span className="text-xs text-slate-300 ml-1">%</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Next: {getCompletionBadge(computeProfileCompletion(advisor)).next}
+                  </p>
+               </div>
+            </div>
+            <div className="h-4 w-full bg-slate-50 rounded-full border border-slate-100 overflow-hidden p-0.5">
+               <motion.div 
+                 initial={{ width: 0 }}
+                 animate={{ width: `${computeProfileCompletion(advisor)}%` }}
+                 className={`h-full rounded-full transition-all duration-1000 ${
+                    computeProfileCompletion(advisor) < 50 ? "bg-red-500 shadow-[0_0_20px_-5px_rgba(239,68,68,0.5)]" :
+                    computeProfileCompletion(advisor) < 80 ? "bg-amber-500 shadow-[0_0_20px_-5px_rgba(245,158,11,0.5)]" :
+                    "bg-emerald-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)]"
+                 }`}
+               />
+            </div>
+          </div>
+
           {/* Header Profile */}
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-10 mb-12 border-b border-slate-100 pb-12">
             <div className="shrink-0 relative">
