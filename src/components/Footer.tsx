@@ -33,7 +33,7 @@ export default function Footer() {
           
           <div className="flex items-center gap-6">
             <a 
-              href="https://twitter.com" 
+              href="https://x.com/KarriKisha96325" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-slate-300 hover:text-navy transition-all duration-300 hover:scale-110"
@@ -42,7 +42,7 @@ export default function Footer() {
               <Twitter size={18} />
             </a>
             <a 
-              href="https://instagram.com" 
+              href="https://www.instagram.com/collegeconnects.co.in" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-slate-300 hover:text-mango transition-all duration-300 hover:scale-110"
@@ -51,7 +51,7 @@ export default function Footer() {
               <Instagram size={18} />
             </a>
             <a 
-              href="https://linkedin.com" 
+              href="https://www.linkedin.com/company/collegeconnects.co.in/posts/?feedView=all" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-slate-300 hover:text-navy transition-all duration-300 hover:scale-110"
