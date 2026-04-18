@@ -254,13 +254,13 @@ export default function HeroSection() {
               </div>
             </motion.div>
 
-            {/* Right Side: 3D Interaction Hidden on small mobile for UX, visible on lg */}
+            {/* Right Side: 3D Interaction Hub */}
             <div 
               ref={cloudRef}
-              className="hidden lg:flex relative items-center justify-center w-full h-[600px] perspective-[2000px] transform-style-3d border-2 border-dashed border-slate-50/50 rounded-[4rem]"
+              className="relative flex items-center justify-center w-full h-[400px] lg:h-[600px] perspective-[2000px] transform-style-3d rounded-[2rem] lg:rounded-[4rem] mt-12 lg:mt-0"
             >
-              <div className="absolute inset-0 pointer-events-none z-0">
-                 {/* Visual guide for the user that this is the interaction area */}
+              <div className="absolute inset-0 pointer-events-none z-0 hidden lg:block">
+                 {/* Visual guide hidden on mobile for cleaner look */}
                  <div className="absolute bottom-6 right-10 text-[9px] font-black text-slate-200 uppercase tracking-widest italic">3D Interaction Zone</div>
               </div>
 
@@ -282,15 +282,12 @@ export default function HeroSection() {
               )}
               
               {/* Decorative Glow */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-100/20 rounded-full blur-[120px] pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 lg:w-96 lg:h-96 bg-orange-100/20 rounded-full blur-[80px] lg:blur-[120px] pointer-events-none" />
             </div>
 
           </div>
         </div>
       </div>
-
-      {/* Spacer to allow for scroll exploration */}
-      <div className="h-[50vh]" />
     </section>
   );
 }
