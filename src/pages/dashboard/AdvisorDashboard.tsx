@@ -203,10 +203,11 @@ export default function AdvisorDashboard() {
                   </div>
                 </div>
 
-                <div className="card-solid rounded-[2rem] p-8 flex flex-col justify-between bg-mango text-white border-none shadow-xl shadow-mango/10">
-                   <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
-                     <Users size={22} className="text-white" />
-                   </div>
+                <div className="rounded-[2.5rem] p-10 flex flex-col justify-between bg-mango text-white shadow-2xl shadow-mango/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-8 relative z-10">
+                    <Users size={28} className="text-white" />
+                  </div>
                    <div>
                      <p className="text-6xl font-black text-white leading-none tracking-tighter">{advisorTotalStudents}</p>
                      <p className="text-lg font-black text-white mt-1">Students Guided</p>
