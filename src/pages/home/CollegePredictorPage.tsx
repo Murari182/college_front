@@ -141,8 +141,8 @@ export default function CollegePredictorPage() {
           transition={{ duration: 0.45 }}
           className="mb-10 text-center"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground mb-4">
-            <Trophy size={14} className="text-neon-teal" />
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-neon-teal/20 bg-neon-teal/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neon-teal mb-6 shadow-sm shadow-neon-teal/5">
+            <Trophy size={12} className="shrink-0" />
             ML Powered Predictions
           </div>
           <h1 className="text-4xl sm:text-5xl font-display font-bold text-foreground tracking-tight mb-4">
