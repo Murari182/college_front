@@ -11,7 +11,7 @@ import {
 } from "@/lib/restApi";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin } from "lucide-react";
+import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import StudentReferEarnPage from "./StudentReferEarnPage";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -22,6 +22,7 @@ import { ProfileDropdown } from "@/components/ProfileDropdown";
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
   { id: "sessions", label: "My Sessions", icon: Calendar },
+  { id: "predictor", label: "College Predictor", icon: Trophy },
   { id: "refer", label: "Refer & Earn", icon: Gift },
 ];
 
@@ -393,6 +394,30 @@ export default function StudentDashboard() {
                   ))}
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === "predictor" && (
+            <motion.div key="predictor" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
+               <div className="card-solid p-8 text-center bg-white border-l-4 border-l-navy relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-navy/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+                  
+                  <div className="relative z-10">
+                    <div className="w-20 h-20 bg-navy/10 rounded-3xl flex items-center justify-center text-navy mx-auto mb-6 shadow-sm">
+                      <Trophy size={40} strokeWidth={2.5} />
+                    </div>
+                    <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">College Predictor 2025</h3>
+                    <p className="text-slate-500 font-bold max-w-lg mx-auto mb-8 leading-relaxed">
+                      Estimate your chances in IITs, NITs, and IIITs based on your JEE Main rank, category, and gender pool.
+                    </p>
+                    <button 
+                      onClick={() => navigate({ to: "/college-predictor" })}
+                      className="btn-primary py-4 px-10 text-sm font-black flex items-center gap-3 mx-auto shadow-xl shadow-navy/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                      OPEN PREDICTOR <ArrowRight size={20} strokeWidth={3} />
+                    </button>
+                  </div>
+               </div>
             </motion.div>
           )}
 
