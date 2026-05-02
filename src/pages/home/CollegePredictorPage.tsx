@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, GraduationCap, Table2 } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowLeft, ExternalLink, GraduationCap, Table2, Search, Send, Trophy, CheckCircle2, XCircle, Info } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -11,8 +11,22 @@ const JOSAA_2025_URL =
 const JOSAA_2024_URL =
   "https://docs.google.com/spreadsheets/d/1il-AcBuWqMUDY6uvaXmOGATRA1bO1Gme/edit?usp=sharing&ouid=102708880640851630376&rtpof=true&sd=true";
 
+interface College {
+  Institute: string;
+  Program: string;
+  ClosingRank: number;
+}
+
 export default function CollegePredictorPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [rank, setRank] = useState<string>("");
+  const [category, setCategory] = useState("OPEN");
+  const [gender, setGender] = useState("Gender-Neutral");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<College[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [leadSaved, setLeadSaved] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +39,56 @@ export default function CollegePredictorPage() {
     if (user && role === "student") navigate({ to: "/student/dashboard" });
     else if (user && role === "advisor") navigate({ to: "/advisor/dashboard" });
     else navigate({ to: "/" });
+  };
+
+  const handlePredict = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rank) return;
+
+    setLoading(true);
+    setError(null);
+    setResults([]);
+    setLeadSaved(false);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REST_API_URL || ""}/api/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          rank: parseInt(rank),
+          category,
+          gender
+        }),
+      });
+
+      const data = await response.json();
+      if (data.colleges && data.colleges.length > 0) {
+        setResults(data.colleges);
+      } else {
+        setError("no colleges found with your rank");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    try {
+      await fetch(`${import.meta.env.VITE_REST_API_URL || ""}/api/predict/lead`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rank: parseInt(rank), email }),
+      });
+      setLeadSaved(true);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -75,20 +139,207 @@ export default function CollegePredictorPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="mb-10"
+          className="mb-10 text-center"
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground mb-4">
-            <GraduationCap size={14} className="text-neon-teal" aria-hidden />
-            Tools
+            <Trophy size={14} className="text-neon-teal" />
+            ML Powered Predictions
           </div>
-          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground tracking-tight">
-            College Predictor
+          <h1 className="text-4xl sm:text-5xl font-display font-bold text-foreground tracking-tight mb-4">
+            Find Your Dream College
           </h1>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Open official JoSAA cutoff data in Google Sheets and use a temporary filter view to search safely without
-            affecting other students.
+          <p className="mt-3 text-sm sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
+            Enter your JEE Main rank to see your estimated colleges based on previous year CSAB/JoSAA cutoffs.
           </p>
         </motion.header>
+
+        <motion.section
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-2xl border border-border/70 bg-background/50 backdrop-blur-sm p-6 sm:p-8 mb-8"
+        >
+          <form onSubmit={handlePredict} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="category" className="block text-sm font-medium text-muted-foreground ml-1">
+                  Seat Type / Category
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-background/50 border border-border/50 rounded-xl py-3 px-4 text-foreground focus:outline-none focus:border-neon-teal/50 transition-all appearance-none cursor-pointer"
+                >
+                  {["OPEN", "EWS", "OBC-NCL", "SC", "ST", "OPEN (PwD)", "EWS (PwD)", "OBC-NCL (PwD)", "SC (PwD)", "ST (PwD)"].map((cat) => (
+                    <option key={cat} value={cat} className="bg-[#0d0d0d] text-white">
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="gender" className="block text-sm font-medium text-muted-foreground ml-1">
+                  Gender Pool
+                </label>
+                <select
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full bg-background/50 border border-border/50 rounded-xl py-3 px-4 text-foreground focus:outline-none focus:border-neon-teal/50 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="Gender-Neutral" className="bg-[#0d0d0d] text-white">Gender-Neutral</option>
+                  <option value="Female-only (including Supernumerary)" className="bg-[#0d0d0d] text-white">Female Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <label htmlFor="rank" className="block text-sm font-medium text-muted-foreground mb-2 ml-1">
+                Your AIR Rank
+              </label>
+              <div className="relative">
+                <input
+                  id="rank"
+                  type="number"
+                  placeholder="e.g. 15000"
+                  value={rank}
+                  onChange={(e) => setRank(e.target.value)}
+                  className="w-full bg-background/50 border border-border/50 rounded-xl py-3 px-4 text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-neon-teal/50 transition-all"
+                  required
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-neon-teal/10 text-neon-teal">
+                  <Search size={20} />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !rank}
+              className="w-full py-4 px-8 bg-foreground text-background font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-3"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+              ) : (
+                <>
+                  Predict Colleges
+                  <GraduationCap size={22} />
+                </>
+              )}
+            </button>
+          </form>
+        </motion.section>
+
+        <AnimatePresence mode="wait">
+          {results.length > 0 && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-8 space-y-4"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-px flex-1 bg-border/50" />
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-4">
+                  Estimated Colleges
+                </span>
+                <div className="h-px flex-1 bg-border/50" />
+              </div>
+              
+              <div className="grid gap-3">
+                {results.map((college, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="p-5 rounded-2xl border border-border/50 bg-background/40 hover:border-neon-teal/30 transition-all"
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-foreground">
+                          {college.Institute}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {college.Program}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">Closing Rank</div>
+                        <div className="text-lg font-mono font-bold text-foreground">
+                          #{college.ClosingRank.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-8"
+            >
+              <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center bg-background/30">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
+                  <XCircle size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">
+                  {error}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Please try for CSAB or leave your email, we'll get back to you sooner with more options!
+                </p>
+
+                {leadSaved ? (
+                  <div className="flex flex-col items-center gap-2 text-neon-teal p-4 rounded-xl bg-neon-teal/5 border border-neon-teal/20">
+                    <CheckCircle2 size={24} />
+                    <span className="font-semibold text-sm">Thank you! We'll be in touch soon.</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleLeadSubmit} className="max-w-sm mx-auto">
+                    <div className="relative flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="flex-1 bg-background/50 border border-border rounded-xl px-4 py-2 text-sm text-foreground focus:outline-none focus:border-neon-teal/50 transition-all"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="bg-neon-teal text-black font-bold px-4 py-2 rounded-xl text-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-2"
+                      >
+                        Notify Me
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mb-12 flex items-center gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 text-blue-400 text-xs"
+        >
+          <Info size={16} className="shrink-0" />
+          <p>
+            Note: Predictions are based on historical 2024 cutoff data. Actual results may vary depending on seat matrix and current trends.
+          </p>
+        </motion.div>
 
         <motion.section
           initial={{ opacity: 0, y: 16 }}
