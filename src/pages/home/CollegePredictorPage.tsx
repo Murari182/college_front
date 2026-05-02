@@ -217,10 +217,10 @@ export default function CollegePredictorPage() {
             <button
               type="submit"
               disabled={loading || !rank}
-              className="w-full py-4 px-8 bg-foreground text-background font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-3"
+              className="w-full py-4 px-8 bg-neon-teal text-black font-bold rounded-2xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-lg shadow-lg shadow-neon-teal/20"
             >
               {loading ? (
-                <div className="w-6 h-6 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
                   Predict Colleges
