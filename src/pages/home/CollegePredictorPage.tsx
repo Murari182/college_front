@@ -149,7 +149,7 @@ export default function CollegePredictorPage() {
             Find Your Dream College
           </h1>
           <p className="mt-3 text-sm sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-            Enter your JEE Main rank to see your estimated colleges based on previous year CSAB/JoSAA cutoffs.
+            Enter your JEE Main rank to see your estimated colleges based on **JoSAA/CSAB 2025** cutoffs.
           </p>
         </motion.header>
 
@@ -337,7 +337,7 @@ export default function CollegePredictorPage() {
         >
           <Info size={16} className="shrink-0" />
           <p>
-            Note: Predictions are based on historical 2024 cutoff data. Actual results may vary depending on seat matrix and current trends.
+            Note: Predictions are based on historical **2025** cutoff data. Actual results may vary depending on seat matrix and current trends.
           </p>
         </motion.div>
 
