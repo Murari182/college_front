@@ -1,200 +1,99 @@
-import {
-  bookAdvisorSession,
-  getAdvisorById,
-  getMyStudentProfile,
-  createPaymentOrder,
-  verifyPayment,
-  type AdvisorPublicDetail,
-} from "@/lib/restApi";
+import { useState, useEffect } from "react";
+import { 
+  ArrowLeft, ArrowRight, Star, MapPin, BookOpen, GraduationCap, 
+  Calendar, Clock, ShieldCheck, IndianRupee, Brain, Award, 
+  Languages, Loader, AlertTriangle
+} from "lucide-react";
+import { getMyStudentProfile, getAdvisorPublicProfile, createBooking } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { getFirebaseAuth } from "@/lib/firebase";
-import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, BookOpen, Star, MapPin, GraduationCap, Clock, IndianRupee, Award, Brain, Languages, Calendar, ShieldCheck, Loader } from "lucide-react";
+import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
-
-const BOOKINGS_STORAGE_KEY = "collegeconnect_bookings_v1";
-
-type SessionBooking = {
-  id: string;
-  advisorId: string;
-  advisorName: string;
-  studentName: string;
-  studentEmail: string;
-  sessionPrice: string;
-  selectedSlot: string;
-  bookedAt: string;
-  status?: "pending" | "accepted" | "rejected" | "changed";
-};
-
-function formatLanguages(a: AdvisorPublicDetail): string {
-  const langs = a.languages?.length ? a.languages.join(", ") : "";
-  const other = a.language_other?.trim();
-  if (langs && other) return `${langs} (${other})`;
-  return langs || other || "";
-}
-
-const ADVISOR_COLORS = [
-  { from: "from-navy", to: "to-blue-400", bg: "bg-navy" },
-  { from: "from-emerald-600", to: "to-teal-400", bg: "bg-emerald-600" },
-  { from: "from-mango", to: "to-orange-400", bg: "bg-mango" },
-  { from: "from-violet-600", to: "to-purple-400", bg: "bg-violet-600" },
-  { from: "from-rose-600", to: "to-pink-400", bg: "bg-rose-600" },
-];
-
-function getAdvisorColor(name: string) {
-  const code = (name || "").charCodeAt(0) || 0;
-  return ADVISOR_COLORS[code % ADVISOR_COLORS.length];
-}
 
 export default function StudentAdvisorDetailPage() {
   const { advisorId } = useParams({ from: "/student/advisor/$advisorId" });
-  const [advisor, setAdvisor] = useState<AdvisorPublicDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [advisor, setAdvisor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [bookingBusy, setBookingBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
-  });
+  const [bookingBusy, setBookingBusy] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    async function load() {
       try {
-        const data = await getAdvisorById(advisorId);
-        if (!cancelled) setAdvisor(data);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load advisor.");
-          setAdvisor(null);
-        }
+        const token = await getFirebaseAuth().currentUser?.getIdToken();
+        if (!token) throw new Error("No token");
+        
+        // Use advisorId from params
+        const data = await getAdvisorPublicProfile(token, advisorId);
+        setAdvisor(data);
+      } catch (err: any) {
+        console.error(err);
+        setError("Could not load advisor details.");
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    };
-    void load();
-    return () => { cancelled = true; };
+    }
+    load();
   }, [advisorId]);
 
-  const name = advisor?.name?.trim() || "Advisor";
-  const initials = name.split(" ").filter(Boolean).map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
-  const college = advisor?.detected_college?.trim() || "";
-  const branch = advisor?.branch?.trim() || "";
-  const studyYearLabel = formatStudyYearLabel(computeEffectiveStudyYear(advisor ?? {}));
-  const sessionPrice = Number(advisor?.session_price || "0");
-  const slots = advisor?.preferred_timezones?.length ? advisor.preferred_timezones : [];
-  const theme = getAdvisorColor(name);
-
-  useEffect(() => {
-    setSelectedSlot(slots[0] || "");
-  }, [advisorId, slots.join("|")]);
-
   const handleBookSession = async () => {
-    if (!advisor) return;
-    if (!selectedSlot.trim()) {
-      alert("Please select one preferred time slot before booking.");
+    if (!selectedDate || !selectedSlot) {
+      alert("Please select both a date and a time slot.");
       return;
     }
-    if (!selectedDate.trim()) {
-      alert("Please select a date for your session.");
-      return;
-    }
-
-    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY;
-    if (!razorpayKey) {
-      alert("Razorpay key is not configured in environment variables (VITE_RAZORPAY_KEY).");
-      return;
-    }
-
-    const auth = getFirebaseAuth();
-    const user = auth.currentUser;
-    if (!user) {
-      alert("Sign in as a student to book a session.");
-      return;
-    }
-
     setBookingBusy(true);
     try {
-      let studentName = user.displayName?.trim() || "";
-      let studentEmail = user.email?.trim() || "";
-      let studentPhone = "";
-      const token = await user.getIdToken(true);
-      try {
-        const me = await getMyStudentProfile(token);
-        if (me.name?.trim()) studentName = me.name.trim();
-        if (me.email?.trim()) studentEmail = me.email.trim();
-        if (me.phone?.trim()) studentPhone = me.phone.trim();
-      } catch { /* fallback */ }
-
-      const price = Number(advisor.session_price || "0");
-      if (price <= 0) throw new Error("Invalid session price.");
-
-      const amountInPaise = Math.round(price * 100);
-      const order = await createPaymentOrder(token, amountInPaise);
-      const options = {
-        key: razorpayKey,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Collegeconnects",
-        description: `Booking session with ${advisor.name}`,
-        order_id: order.id,
-        prefill: { name: studentName, email: studentEmail, contact: studentPhone },
-        theme: { color: "#1E3A8A" },
-        handler: async (response: any) => {
-          try {
-            setBookingBusy(true);
-            await verifyPayment(token, response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
-            await bookAdvisorSession(token, advisor.id, selectedSlot.trim(), selectedDate.trim());
-            const booking: SessionBooking = {
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              advisorId: advisor.id,
-              advisorName: advisor.name?.trim() || "Advisor",
-              studentName: studentName || "Student",
-              studentEmail: studentEmail || "unknown@email",
-              sessionPrice: String(advisor.session_price || ""),
-              selectedSlot: `${selectedDate.trim()} at ${selectedSlot.trim()}`,
-              bookedAt: new Date().toISOString(),
-              status: "pending",
-            };
-            const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-            const existing: SessionBooking[] = raw ? (JSON.parse(raw) as SessionBooking[]) : [];
-            existing.unshift(booking);
-            localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(existing));
-            alert("Payment successful and session booked! The advisor has been notified.");
-          } catch (e) {
-            alert(e instanceof Error ? e.message : "Payment verification or booking failed.");
-          } finally {
-            setBookingBusy(false);
-          }
-        },
-        modal: { ondismiss: () => setBookingBusy(false) },
-      };
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on("payment.failed", (response: any) => {
-        alert(`Payment failed: ${response.error.description}`);
-        setBookingBusy(false);
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
+      if (!token) throw new Error("No auth token");
+      await createBooking(token, {
+        advisor_id: advisorId,
+        selected_date: selectedDate,
+        selected_slot: selectedSlot,
       });
-      rzp.open();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Could not initiate payment process.");
+      alert("Booking request sent successfully!");
+      navigate({ to: "/student/dashboard" });
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to create booking.");
+    } finally {
       setBookingBusy(false);
     }
   };
 
+  const name = advisor?.name || "Advisor Profile";
+  const college = advisor?.college_name;
+  const branch = advisor?.branch;
+  const initials = name.split(" ").map((n: any) => n[0]).join("").toUpperCase();
+  
+  const effectiveYear = advisor ? computeEffectiveStudyYear(advisor) : 1;
+  const studyYearLabel = formatStudyYearLabel(effectiveYear);
+
+  const sessionPrice = advisor?.session_price || 0;
+  const slots = Array.isArray(advisor?.preferred_time_slots) ? advisor.preferred_time_slots : [];
+
+  const theme = {
+    from: "from-navy",
+    to: "to-slate-800"
+  };
+
+  const formatLanguages = (adv: any) => {
+    if (!adv.languages) return "";
+    if (Array.isArray(adv.languages)) return adv.languages.join(", ");
+    return adv.languages;
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-40">
+    <div className="min-h-screen bg-[#F8FAFC] pb-32">
       {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-navy/8 to-transparent blur-3xl" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tl from-mango/5 to-transparent blur-3xl" />
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 relative z-10">
+      <div className="max-w-3xl mx-auto px-4 pt-8 relative z-10">
         {/* Back link */}
         <Link to="/student/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-navy transition-colors mb-8 group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
@@ -218,12 +117,10 @@ export default function StudentAdvisorDetailPage() {
 
             {/* === HERO CARD === */}
             <div className={`bg-gradient-to-br ${theme.from} ${theme.to} rounded-[2.5rem] p-8 sm:p-10 mb-6 relative overflow-hidden shadow-2xl`}>
-              {/* Abstract decoration */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-2xl" />
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
 
               <div className="relative z-10 flex items-start gap-6">
-                {/* Avatar */}
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[1.5rem] bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-white text-3xl font-black shadow-xl shrink-0">
                   {initials}
                 </div>
@@ -245,15 +142,11 @@ export default function StudentAdvisorDetailPage() {
                         </div>
                       )}
                     </div>
-
-                    {/* Rating badge */}
                     <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1.5">
                       <Star size={14} className="text-yellow-300 fill-yellow-300" />
                       <span className="text-white font-black text-sm">4.8</span>
                     </div>
                   </div>
-
-                  {/* Tags */}
                   <div className="flex flex-wrap gap-2 mt-4">
                     <span className="bg-white/20 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
                       {studyYearLabel}
@@ -313,13 +206,11 @@ export default function StudentAdvisorDetailPage() {
             </div>
 
             {/* === SKILLS & ACHIEVEMENTS === */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
               {advisor.skills?.trim() && (
                 <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-navy/10 flex items-center justify-center">
-                      <Brain size={16} className="text-navy" />
-                    </div>
+                    <Brain size={16} className="text-navy" />
                     <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Skills</p>
                   </div>
                   <p className="text-sm text-slate-600 font-medium leading-relaxed">{advisor.skills.trim()}</p>
@@ -328,93 +219,78 @@ export default function StudentAdvisorDetailPage() {
               {advisor.achievements?.trim() && (
                 <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-mango/10 flex items-center justify-center">
-                      <Award size={16} className="text-mango" />
-                    </div>
+                    <Award size={16} className="text-mango" />
                     <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Achievements</p>
                   </div>
                   <p className="text-sm text-slate-600 font-medium leading-relaxed">{advisor.achievements.trim()}</p>
                 </div>
               )}
-              {formatLanguages(advisor) && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                      <Languages size={16} className="text-emerald-600" />
-                    </div>
-                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Languages</p>
+            </div>
+
+            {/* === BOOKING SECTION === */}
+            <div className="mb-12">
+              <div className="mb-8 p-6 bg-slate-50/50 border border-slate-100 rounded-[2rem]">
+                <div className="flex items-center gap-3 mb-5">
+                  <Calendar size={18} className="text-mango" />
+                  <div>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 1</p>
+                    <p className="text-sm font-black text-slate-900">Choose Session Date</p>
                   </div>
-                  <p className="text-sm text-slate-600 font-medium">{formatLanguages(advisor)}</p>
+                </div>
+                <input
+                  type="date"
+                  min={new Date().toISOString().split("T")[0]}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 outline-none focus:border-navy transition-all shadow-sm"
+                />
+              </div>
+
+              {slots.length > 0 ? (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <Clock size={18} className="text-navy" />
+                    <div>
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 2</p>
+                      <p className="text-sm font-black text-slate-900">Pick Available Time Slot</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {slots.map((slot) => (
+                      <label
+                        key={slot}
+                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                          selectedSlot === slot
+                            ? "border-navy bg-navy/5 shadow-md"
+                            : "border-slate-100 hover:border-slate-200 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="booking-slot"
+                          value={slot}
+                          checked={selectedSlot === slot}
+                          onChange={() => setSelectedSlot(slot)}
+                          className="accent-navy"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className={selectedSlot === slot ? "text-navy" : "text-slate-400"} />
+                          <span className={`text-sm font-bold ${selectedSlot === slot ? "text-navy" : "text-slate-700"}`}>
+                            {slot}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-amber-50 border border-amber-100 rounded-[2rem]">
+                  <AlertTriangle size={32} className="text-amber-500 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-amber-900 uppercase tracking-widest mb-1">No Slots Available</p>
+                  <p className="text-xs text-amber-700 font-medium">This advisor hasn't set their availability yet.</p>
                 </div>
               )}
             </div>
-
-                <div className="mb-8 p-6 bg-slate-50/50 border border-slate-100 rounded-[2rem]">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-2xl bg-mango/10 flex items-center justify-center">
-                      <Calendar size={18} className="text-mango" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 1</p>
-                      <p className="text-sm font-black text-slate-900">Choose Session Date</p>
-                    </div>
-                  </div>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split("T")[0]}
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 outline-none focus:border-navy transition-all shadow-sm"
-                  />
-                </div>
-
-                {slots.length > 0 ? (
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-navy/10 flex items-center justify-center">
-                        <Clock size={18} className="text-navy" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 2</p>
-                        <p className="text-sm font-black text-slate-900">Pick Available Time Slot</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {slots.map((slot) => (
-                        <label
-                          key={slot}
-                          className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                            selectedSlot === slot
-                              ? "border-navy bg-navy/5 shadow-md"
-                              : "border-slate-100 hover:border-slate-200 bg-white"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="booking-slot"
-                            value={slot}
-                            checked={selectedSlot === slot}
-                            onChange={() => setSelectedSlot(slot)}
-                            className="accent-navy"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Clock size={14} className={selectedSlot === slot ? "text-navy" : "text-slate-400"} />
-                            <span className={`text-sm font-bold ${selectedSlot === slot ? "text-navy" : "text-slate-700"}`}>
-                              {slot}
-                            </span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-8 text-center bg-amber-50 border border-amber-100 rounded-[2rem]">
-                    <AlertTriangle size={32} className="text-amber-500 mx-auto mb-3" />
-                    <p className="text-sm font-bold text-amber-900 uppercase tracking-widest mb-1">No Slots Available</p>
-                    <p className="text-xs text-amber-700 font-medium">This advisor hasn't set their availability yet.</p>
-                  </div>
-                )}
-              </div>
 
           </motion.div>
         )}
