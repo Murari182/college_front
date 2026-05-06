@@ -209,9 +209,12 @@ export default function StudentDashboard() {
       localStorage.setItem("user_role", "student");
     } catch (e: any) {
       console.error("StudentDashboard profile load failed:", e);
-      if (e.status === 403 || (e.message && e.message.includes("403"))) {
-        alert("Access Denied: You are registered as an Advisor.");
-        navigate({ to: "/advisor/dashboard" });
+      const msg = e.message || "Access Denied";
+      if (e.status === 403 || (msg && msg.includes("403"))) {
+        alert(msg);
+        if (!msg.includes("Dual-role")) {
+           navigate({ to: "/advisor/dashboard" });
+        }
       } else {
         // Not found or other error
         navigate({ to: "/auth/signup" });

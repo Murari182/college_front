@@ -95,9 +95,12 @@ export default function AdvisorProfilePage() {
       });
     } catch (err: any) {
       console.error(err);
-      if (err.status === 403 || (err.message && err.message.includes("403"))) {
-        alert("Access Denied: You are registered as a Student.");
-        navigate({ to: "/student/dashboard" });
+      const msg = err.message || "Access Denied";
+      if (err.status === 403 || (msg && msg.includes("403"))) {
+        alert(msg);
+        if (!msg.includes("Dual-role")) {
+           navigate({ to: "/advisor/dashboard" });
+        }
       }
     } finally {
       setLoading(false);
