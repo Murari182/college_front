@@ -4,7 +4,7 @@ import {
   Calendar, Clock, ShieldCheck, IndianRupee, Brain, Award, 
   Languages, Loader, AlertTriangle
 } from "lucide-react";
-import { getMyStudentProfile, getAdvisorPublicProfile, createBooking } from "@/lib/restApi";
+import { getAdvisorById, bookAdvisorSession } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
@@ -27,7 +27,7 @@ export default function StudentAdvisorDetailPage() {
         if (!token) throw new Error("No token");
         
         // Use advisorId from params
-        const data = await getAdvisorPublicProfile(token, advisorId);
+        const data = await getAdvisorById(token, advisorId);
         setAdvisor(data);
       } catch (err: any) {
         console.error(err);
@@ -48,11 +48,7 @@ export default function StudentAdvisorDetailPage() {
     try {
       const token = await getFirebaseAuth().currentUser?.getIdToken();
       if (!token) throw new Error("No auth token");
-      await createBooking(token, {
-        advisor_id: advisorId,
-        selected_date: selectedDate,
-        selected_slot: selectedSlot,
-      });
+      await bookAdvisorSession(token, advisorId, selectedSlot, selectedDate);
       alert("Booking request sent successfully!");
       navigate({ to: "/student/dashboard" });
     } catch (err: any) {
