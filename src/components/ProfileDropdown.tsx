@@ -1,6 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getFirebaseAuth } from "@/lib/firebase";
-import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -13,7 +11,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, LayoutDashboard, CheckCircle2 } from "lucide-react";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
-import { getMyStudentProfile, getMyAdvisorProfile } from "@/lib/restApi";
+import {
+  clearStoredBackendAccessToken,
+  getSessionAccessToken,
+  getMyStudentProfile,
+  getMyAdvisorProfile,
+} from "@/lib/restApi";
 import { motion } from "motion/react";
 
 interface ProfileDropdownProps {
@@ -27,29 +30,29 @@ export function ProfileDropdown({ role, userName, avatarUrl }: ProfileDropdownPr
   const [completion, setCompletion] = useState<number | null>(null);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        try {
-          const token = await u.getIdToken();
-          const profile = role === "student" 
-            ? await getMyStudentProfile(token)
-            : await getMyAdvisorProfile(token);
-          const pct = calculateProfileCompletion(role, profile);
-          setCompletion(pct);
-        } catch (error) {
-          console.error("Failed to fetch profile for completion:", error);
-          setCompletion(0);
-        }
+    const loadCompletion = async () => {
+      const token = getSessionAccessToken();
+      if (!token) return;
+      try {
+        const profile = role === "student" 
+          ? await getMyStudentProfile(token)
+          : await getMyAdvisorProfile(token);
+        const pct = calculateProfileCompletion(role, profile);
+        setCompletion(pct);
+      } catch (error) {
+        console.error("Failed to fetch profile for completion:", error);
+        setCompletion(0);
       }
-    });
-    return unsub;
+    };
+    void loadCompletion();
   }, [role]);
 
   const handleLogout = async () => {
     try {
       localStorage.removeItem("user_role");
-      await signOut(getFirebaseAuth());
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_email");
+      clearStoredBackendAccessToken();
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed:", error);

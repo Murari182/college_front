@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { PasswordField } from "@/components/ui/password-field";
-import { getFirebaseAuth } from "@/lib/firebase";
-import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
-import { getMyStudentProfile, getMyAdvisorProfile } from "@/lib/restApi";
+import {
+  getMyStudentProfile,
+  getMyAdvisorProfile,
+  loginWithPassword,
+} from "@/lib/restApi";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { Loader, LogIn } from "lucide-react";
 import { useState } from "react";
 import { AuthShell } from "./AuthShell";
@@ -17,21 +19,20 @@ export default function SigninPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleLogin() {
     if (!email || !password) {
-      alert("Please enter email and password.");
+      setErrorMessage("Please enter email and password.");
       return;
     }
+    setErrorMessage(null);
     setBusy(true);
     try {
-      // 1. Firebase Auth
-      const userCred = await signInWithEmailAndPassword(
-        getFirebaseAuth(),
-        email.trim(),
-        password,
-      );
-      const token = await userCred.user.getIdToken();
+      const login = await loginWithPassword(role, email.trim(), password);
+      const token = login.access_token;
+      localStorage.setItem("user_name", login.user?.name || email.trim().split("@")[0]);
+      localStorage.setItem("user_email", email.trim().toLowerCase());
 
       // 2. Explicit Role Check
       try {
@@ -48,14 +49,17 @@ export default function SigninPage() {
         // Handle 403 Role Conflict specifically
         if (err.status === 403 || (err.message && err.message.includes("403"))) {
           const otherRole = role === "student" ? "Advisor" : "Student";
-          alert(`It looks like you have an ${otherRole} account. Please switch to "I'm an ${otherRole}" above.`);
+          setErrorMessage(
+            `It looks like you have an ${otherRole} account. Please switch to "I'm an ${otherRole}" above.`,
+          );
         } else {
-          alert(`Profile not found. You don't have a ${role} account. Try switching roles or signing up.`);
+          setErrorMessage(
+            `Profile not found. You don't have a ${role} account. Try switching roles or signing up.`,
+          );
         }
-        await getFirebaseAuth().signOut();
       }
     } catch (e) {
-      alert(formatFirebaseAuthError(e));
+      setErrorMessage(e instanceof Error ? e.message : "Login failed.");
     } finally {
       setBusy(false);
     }
@@ -68,6 +72,10 @@ export default function SigninPage() {
         subtitle="Sign in to your account. Please select your role below."
       >
         <div className="flex flex-col gap-6">
+          <ErrorAlert
+            message={errorMessage}
+            onClose={() => setErrorMessage(null)}
+          />
           {/* Role Selection — color-coded for clarity */}
           <div className="flex p-1.5 bg-slate-100 rounded-2xl gap-1.5">
             <button
@@ -163,10 +171,6 @@ export default function SigninPage() {
         email={email}
         onEmailChange={setEmail}
         accent={role === "student" ? "teal" : "orange"}
-        onResetSuccess={async (e, newPass) => {
-          await signInWithEmailAndPassword(getFirebaseAuth(), e, newPass);
-          handleLogin();
-        }}
       />
     </>
   );

@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getMyAdvisorProfile,
   getMyBookings,
   type AdvisorProfileResponse,
   type BookingResponse,
+  getSessionAccessToken,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, Calendar, IndianRupee, Star, TrendingUp, Users, Wallet, ArrowUpRight, History, Gift, CheckCircle2, ShieldCheck, Clock, ArrowRight, Edit3, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -17,6 +16,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { fadeInUp, staggerContainer } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { MiniCalendar } from "@/components/MiniCalendar";
+import { useToast } from "@/components/ui/toast";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: TrendingUp },
@@ -60,24 +60,25 @@ function StatCard({ label, value, icon: Icon, colorClass, delay = 0 }: { label: 
 }
 
 export default function AdvisorDashboard() {
+  const toast = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
+  const [authUser, setAuthUser] = useState<{ displayName?: string; photoURL?: string } | null>(null);
   const [advisor, setAdvisor] = useState<AdvisorProfileResponse | null>(null);
   const [sessionBookings, setSessionBookings] = useState<BookingResponse[]>([]);
 
   useEffect(() => {
     document.title = "Advisor Dashboard | CollegeConnects";
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, u => {
-      setAuthUser(u);
-      if (u) {
-        loadProfile(u);
-      }
-    });
+    const token = getSessionAccessToken();
+    if (!token) {
+      navigate({ to: "/auth/signin" });
+      return;
+    }
+    setAuthUser({ displayName: localStorage.getItem("user_name") || "Advisor" });
+    void loadProfile(token);
   }, []);
 
-  const loadProfile = async (u: FirebaseUser) => {
+  const loadProfile = async (token: string) => {
     try {
       const storedRole = localStorage.getItem("user_role");
       if (storedRole && storedRole !== "advisor") {
@@ -85,7 +86,6 @@ export default function AdvisorDashboard() {
         return;
       }
 
-      const token = await u.getIdToken(true);
       const profile = await getMyAdvisorProfile(token);
       setAdvisor(profile);
       localStorage.setItem("user_role", "advisor");
@@ -93,7 +93,7 @@ export default function AdvisorDashboard() {
       console.error("AdvisorDashboard profile load failed:", e);
       const msg = e.message || "Access Denied";
       if (e.status === 403 || (msg && msg.includes("403"))) {
-        alert(msg);
+        toast.error(msg);
         if (!msg.includes("Dual-role")) {
            navigate({ to: "/student/dashboard" });
         }
@@ -105,18 +105,18 @@ export default function AdvisorDashboard() {
   };
 
   const handleSync = async (bookingId: string) => {
-    if (!authUser) return;
-    const token = await authUser.getIdToken(true);
+    const token = getSessionAccessToken();
+    if (!token) return;
     const res = await fetch(`/api/payments/sync-status/${bookingId}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     if (data.ok) {
-      alert("Status synced!");
+      toast.success("Status synced!");
       window.location.reload();
     } else {
-      alert(data.message || "No update.");
+      toast.info(data.message || "No update.");
     }
   };
 
@@ -129,10 +129,11 @@ export default function AdvisorDashboard() {
   };
 
   useEffect(() => {
-    if (activeTab !== "sessions" || !authUser) return;
+    if (activeTab !== "sessions") return;
     const loadBookings = async () => {
       try {
-        const token = await authUser.getIdToken(true);
+        const token = getSessionAccessToken();
+        if (!token) return;
         const list = await getMyBookings(token);
         setSessionBookings(list);
       } catch (e) {
@@ -434,13 +435,13 @@ export default function AdvisorDashboard() {
                       </div>
                       <div className="flex flex-col sm:flex-row gap-4 mb-2">
                         <button 
-                          onClick={() => alert("Banking settlement feature is being enabled for your account. Please check back in 24-48 hours.")}
+                          onClick={() => toast.info("Banking settlement feature is being enabled for your account. Please check back in 24-48 hours.")}
                           className="flex-1 btn-primary bg-mango hover:bg-mango-dark border-none px-8 py-5 text-base active:scale-95 transition-transform"
                         >
                           Transfer to Bank
                         </button>
                         <button 
-                          onClick={() => alert("Payout history will be available after your first successful settlement.")}
+                          onClick={() => toast.info("Payout history will be available after your first successful settlement.")}
                           className="flex-1 bg-white border-2 border-white hover:bg-slate-50 text-mango px-8 py-5 text-base font-black rounded-xl active:scale-95 transition-all shadow-lg shadow-black/10"
                         >
                           History

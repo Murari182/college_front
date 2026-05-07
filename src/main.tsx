@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import DeployConfigMissing from "./components/DeployConfigMissing";
 import { RootErrorBoundary } from "./components/RootErrorBoundary";
+import { ToastProvider } from "./components/ui/toast";
 import {
   getFirebaseAnalytics,
   getFirebaseApp,
@@ -46,9 +47,11 @@ if (!isFirebaseConfigured()) {
 
   ReactDOM.createRoot(rootEl).render(
     <RootErrorBoundary>
-      <Suspense fallback={null}>
-        <MainShell />
-      </Suspense>
+      <ToastProvider>
+        <Suspense fallback={null}>
+          <MainShell />
+        </Suspense>
+      </ToastProvider>
     </RootErrorBoundary>,
   );
 }

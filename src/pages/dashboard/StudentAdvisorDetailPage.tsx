@@ -6,11 +6,13 @@ import {
 } from "lucide-react";
 import { getAdvisorById, bookAdvisorSession } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { getSessionAccessToken } from "@/lib/restApi";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
+import { useToast } from "@/components/ui/toast";
 
 export default function StudentAdvisorDetailPage() {
+  const toast = useToast();
   const { advisorId } = useParams({ from: "/student/advisor/$advisorId" });
   const navigate = useNavigate();
   const [advisor, setAdvisor] = useState<any>(null);
@@ -23,11 +25,11 @@ export default function StudentAdvisorDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const token = await getFirebaseAuth().currentUser?.getIdToken();
+        const token = getSessionAccessToken();
         if (!token) throw new Error("No token");
         
         // Use advisorId from params
-        const data = await getAdvisorById(token, advisorId);
+        const data = await getAdvisorById(advisorId);
         setAdvisor(data);
       } catch (err: any) {
         console.error(err);
@@ -41,19 +43,19 @@ export default function StudentAdvisorDetailPage() {
 
   const handleBookSession = async () => {
     if (!selectedDate || !selectedSlot) {
-      alert("Please select both a date and a time slot.");
+      toast.error("Please select both a date and a time slot.");
       return;
     }
     setBookingBusy(true);
     try {
-      const token = await getFirebaseAuth().currentUser?.getIdToken();
+      const token = getSessionAccessToken();
       if (!token) throw new Error("No auth token");
       await bookAdvisorSession(token, advisorId, selectedSlot, selectedDate);
-      alert("Booking request sent successfully!");
+      toast.success("Booking request sent successfully!");
       navigate({ to: "/student/dashboard" });
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to create booking.");
+      toast.error(err.message || "Failed to create booking.");
     } finally {
       setBookingBusy(false);
     }

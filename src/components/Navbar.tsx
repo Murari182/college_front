@@ -1,9 +1,8 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { onAuthStateChanged, type User } from "firebase/auth";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { clearStoredBackendAccessToken, getSessionAccessToken } from "@/lib/restApi";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDropdown } from "./ProfileDropdown";
 
@@ -17,22 +16,20 @@ const navLinks: { label: string; href: string; isHash: boolean }[] = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<{ displayName?: string; photoURL?: string } | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    
-    // Set initial user if already available (prevents guest flicker)
-    if (auth.currentUser) {
-      setAuthUser(auth.currentUser);
+    const token = getSessionAccessToken();
+    if (!token) {
+      setAuthUser(null);
+      return;
     }
-
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setAuthUser(u);
+    setAuthUser({
+      displayName: localStorage.getItem("user_name") || "User",
+      photoURL: undefined,
     });
-    return unsub;
   }, []);
 
   const isHomePage = location.pathname === "/";
@@ -158,8 +155,12 @@ export default function Navbar() {
                 {authUser ? (
                   <button 
                     onClick={() => {
-                        getFirebaseAuth().signOut();
+                        clearStoredBackendAccessToken();
+                        localStorage.removeItem("user_role");
+                        localStorage.removeItem("user_name");
+                        localStorage.removeItem("user_email");
                         setMobileOpen(false);
+                        window.location.href = "/";
                     }} 
                     className="text-red-500 font-bold uppercase tracking-widest text-sm"
                   >
