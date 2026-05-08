@@ -1,17 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
-import { getFirebaseAuth } from "@/lib/firebase";
-import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
-import { requestSignupOtp, verifySignupOtp, registerStudent, registerAdvisor } from "@/lib/restApi";
-import { FirebaseError } from "firebase/app";
+import {
+  requestSignupOtp,
+  verifySignupOtp,
+  registerStudent,
+  registerAdvisor,
+} from "@/lib/restApi";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { CheckCircle, Loader, Mail, UserPlus, GraduationCap, ShieldCheck, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthShell } from "./AuthShell";
 import { motion, AnimatePresence } from "motion/react";
+import { useToast } from "@/components/ui/toast";
 
 export default function SignupPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const [role, setRole] = useState<"student" | "advisor">("student");
   const [step, setStep] = useState(1);
@@ -23,6 +26,7 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [signupToken, setSignupToken] = useState<string | null>(null);
   const [sessionPrice, setSessionPrice] = useState("199");
   const [preferredTimings, setPreferredTimings] = useState<string[]>([]);
   const [newTiming, setNewTiming] = useState("");
@@ -52,7 +56,7 @@ export default function SignupPage() {
 
   const handleSendOtp = async (isResend = false) => {
     if (role === "advisor" && isPersonalEmail(email)) {
-      alert("Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.");
+      toast.error("Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.");
       return;
     }
     setBusy(true);
@@ -61,9 +65,9 @@ export default function SignupPage() {
       setOtpSent(true);
       if (!isResend) setStep(4);
       setResendTimer(60); // Start 60s cooldown
-      alert(isResend ? "New verification code sent!" : "Verification code sent to your email.");
+      toast.success(isResend ? "New verification code sent!" : "Verification code sent to your email.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to send OTP.");
+      toast.error(e instanceof Error ? e.message : "Failed to send OTP.");
     } finally {
       setBusy(false);
     }
@@ -71,17 +75,16 @@ export default function SignupPage() {
 
   const handleVerifyAndSignup = async () => {
     if (!otp) {
-      alert("Please enter the verification code.");
+      toast.error("Please enter the verification code.");
       return;
     }
     setBusy(true);
     try {
-      await verifySignupOtp(role, email.trim(), otp.trim(), password);
-      const auth = getFirebaseAuth();
-      const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const user = userCred.user;
-      await updateProfile(user, { displayName: name });
-      const token = await user.getIdToken();
+      const verified = await verifySignupOtp(role, email.trim(), otp.trim(), password);
+      const token = verified.access_token;
+      setSignupToken(token);
+      localStorage.setItem("user_name", name.trim() || email.trim().split("@")[0]);
+      localStorage.setItem("user_email", email.trim().toLowerCase());
       if (role === "advisor") {
         setStep(5);
         return;
@@ -97,12 +100,10 @@ export default function SignupPage() {
         navigate({ to: "/student/dashboard" });
       }
     } catch (e) {
-      if (e instanceof FirebaseError) {
-        alert(formatFirebaseAuthError(e));
-      } else if (e.message && e.message.includes("409")) {
-        alert("This email is already registered. Please Sign In instead.");
+      if (e && typeof e === "object" && "message" in e && typeof (e as { message: string }).message === "string" && (e as { message: string }).message.includes("409")) {
+        toast.error("This email is already registered. Please Sign In instead.");
       } else {
-        alert(e instanceof Error ? e.message : "Signup failed.");
+        toast.error(e instanceof Error ? e.message : "Signup failed.");
       }
     } finally {
       if (role === "student") setBusy(false);
@@ -112,9 +113,12 @@ export default function SignupPage() {
   const handleFinishAdvisorProfile = async () => {
     setBusy(true);
     try {
-      const auth = getFirebaseAuth();
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) return;
+      const token = signupToken;
+      if (!token) {
+        toast.error("Session expired. Please verify OTP again.");
+        setStep(4);
+        return;
+      }
 
       const payload = {
         name,
@@ -128,7 +132,7 @@ export default function SignupPage() {
       localStorage.setItem("user_role", "advisor");
       navigate({ to: "/advisor/dashboard" });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to finish advisor profile.");
+      toast.error(e instanceof Error ? e.message : "Failed to finish advisor profile.");
     } finally {
       setBusy(false);
     }
@@ -205,7 +209,7 @@ export default function SignupPage() {
                 />
               </div>
               <Button 
-                onClick={() => name ? nextStep() : alert("Please enter your name")} 
+                onClick={() => name ? nextStep() : toast.error("Please enter your name")} 
                 className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 mt-2 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
               >
                 Continue <ArrowRight size={18} className="ml-2" />
@@ -236,7 +240,7 @@ export default function SignupPage() {
               <div className="flex gap-4 mt-2">
                 <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl h-14 font-black uppercase tracking-widest text-[10px]">Back</Button>
                 <Button 
-                  onClick={() => email ? nextStep() : alert("Please enter your email")} 
+                  onClick={() => email ? nextStep() : toast.error("Please enter your email")} 
                   className={`flex-[2] font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
                 >
                   Next

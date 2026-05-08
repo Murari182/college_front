@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getFirebaseAuth } from "@/lib/firebase";
 import { IndianRupee } from "lucide-react";
 import {
   createStudentReferral,
   getStudentReferralSummary,
   type ReferralSummaryResponse,
+  getSessionAccessToken,
 } from "@/lib/restApi";
 
 export default function StudentReferEarnPage() {
@@ -18,7 +18,7 @@ export default function StudentReferEarnPage() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+      const token = getSessionAccessToken();
       if (!token) return;
       try {
         const s = await getStudentReferralSummary(token);
@@ -43,7 +43,7 @@ export default function StudentReferEarnPage() {
       setMsg("You need at least 2 attended sessions before you can record a referral.");
       return;
     }
-    const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+    const token = getSessionAccessToken();
     if (!token) {
       setMsg("Sign in required.");
       return;

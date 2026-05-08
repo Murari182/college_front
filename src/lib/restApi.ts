@@ -1,5 +1,6 @@
 // Use environment variable for production, or fallback to empty (Vite proxy) for local development.
 const API_URL = import.meta.env.VITE_REST_API_URL || "";
+const BACKEND_ACCESS_TOKEN_KEY = "backend_access_token";
 
 function url(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -42,6 +43,29 @@ async function parseErrorMessage(res: Response): Promise<string> {
     /* ignore */
   }
   return res.statusText || `Request failed (${res.status})`;
+}
+
+export function getSessionAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem(BACKEND_ACCESS_TOKEN_KEY);
+  return token && token.trim() ? token.trim() : null;
+}
+
+export function setSessionAccessToken(token: string): void {
+  if (typeof window === "undefined") return;
+  const cleaned = token.trim();
+  if (!cleaned) return;
+  localStorage.setItem(BACKEND_ACCESS_TOKEN_KEY, cleaned);
+}
+
+export function clearStoredBackendAccessToken(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(BACKEND_ACCESS_TOKEN_KEY);
+}
+
+function bearerToken(firebaseOrBackendToken: string): string {
+  const token = getSessionAccessToken() || firebaseOrBackendToken;
+  return `Bearer ${token}`;
 }
 
 /** Response from POST /api/students or /api/advisors after MongoDB insert. */
@@ -205,14 +229,44 @@ export async function verifySignupOtp(
   email: string,
   otp: string,
   password: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; access_token: string; token_type: string; expires_in: number }> {
   const res = await fetch(url("/api/auth/signup-otp/verify"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role, email, otp, password }),
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
-  return await parseJsonOrThrow<{ ok: boolean }>(res);
+  const data = await parseJsonOrThrow<{
+    ok: boolean;
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+  }>(res);
+  setSessionAccessToken(data.access_token);
+  return data;
+}
+
+export async function loginWithPassword(
+  role: PasswordResetRole,
+  email: string,
+  password: string,
+): Promise<{ access_token: string; token_type: string; expires_in: number; user?: { name?: string } }> {
+  const res = await fetch(url("/api/auth/login"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ role, email, password }),
+  });
+  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  const data = await parseJsonOrThrow<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user?: { name?: string };
+  }>(res);
+  setSessionAccessToken(data.access_token);
+  return data;
 }
 
 export type BookingResponse = {
@@ -256,7 +310,7 @@ export async function registerStudent(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -274,7 +328,7 @@ export async function registerAdvisor(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -290,7 +344,7 @@ export async function getMyAdvisorProfile(
   const res = await fetch(url("/api/advisors/me"), {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) {
@@ -307,7 +361,7 @@ export async function updateMyAdvisorProfile(
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -323,7 +377,7 @@ export async function getMyStudentProfile(
   const res = await fetch(url("/api/students/me"), {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) {
@@ -340,7 +394,7 @@ export async function updateMyStudentProfile(
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -388,7 +442,7 @@ export async function bookAdvisorSession(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify({ advisor_id: advisorId, selected_slot: selectedSlot, selected_date: selectedDate }),
   });
@@ -419,7 +473,7 @@ export async function notifyStudentSessionUpdate(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(payload),
   });
@@ -439,7 +493,7 @@ export async function notifyAdvisorFinalSlot(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(payload),
   });
@@ -465,7 +519,7 @@ export async function createBooking(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(payload),
   });
@@ -477,7 +531,7 @@ export async function getMyBookings(firebaseIdToken: string): Promise<BookingRes
   const res = await fetch(url("/api/bookings/me"), {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
@@ -491,7 +545,7 @@ export async function getBookingById(
   const res = await fetch(url(`/api/bookings/${bookingId}`), {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
@@ -505,7 +559,7 @@ export async function joinBookingAction(
   const res = await fetch(url(`/api/bookings/${bookingId}/join`), {
     method: "PATCH",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
@@ -519,7 +573,7 @@ export async function reportNoShowAction(
   const res = await fetch(url(`/api/bookings/${bookingId}/report-noshow`), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
@@ -539,7 +593,7 @@ export async function uploadProfilePictureToS3(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify({ role, contentType: file.type }),
   });
@@ -561,7 +615,7 @@ export async function uploadCollegeIdPairToS3(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${firebaseIdToken}`,
+        Authorization: bearerToken(firebaseIdToken),
       },
       body: JSON.stringify({
         frontContentType: front.type,
@@ -597,7 +651,7 @@ export async function getAdvisorReferralSummary(
 ): Promise<ReferralSummaryResponse> {
   const res = await fetch(url("/api/advisors/referrals/summary"), {
     method: "GET",
-    headers: { Authorization: `Bearer ${firebaseIdToken}` },
+    headers: { Authorization: bearerToken(firebaseIdToken) },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
   return await parseJsonOrThrow<ReferralSummaryResponse>(res);
@@ -611,7 +665,7 @@ export async function createAdvisorReferral(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -624,7 +678,7 @@ export async function getStudentReferralSummary(
 ): Promise<ReferralSummaryResponse> {
   const res = await fetch(url("/api/students/referrals/summary"), {
     method: "GET",
-    headers: { Authorization: `Bearer ${firebaseIdToken}` },
+    headers: { Authorization: bearerToken(firebaseIdToken) },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));
   return await parseJsonOrThrow<ReferralSummaryResponse>(res);
@@ -638,7 +692,7 @@ export async function createStudentReferral(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify(body),
   });
@@ -655,7 +709,7 @@ export async function createPaymentOrder(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify({ amount, currency }),
   });
@@ -673,7 +727,7 @@ export async function verifyPayment(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${firebaseIdToken}`,
+      Authorization: bearerToken(firebaseIdToken),
     },
     body: JSON.stringify({
       razorpay_order_id,
@@ -688,7 +742,7 @@ export async function verifyPayment(
 export async function syncBookingStatus(firebaseIdToken: string, bookingId: string) {
   const res = await fetch(url(`/api/payments/sync-status/${bookingId}`), {
     method: "POST",
-    headers: { Authorization: `Bearer ${firebaseIdToken}` },
+    headers: { Authorization: bearerToken(firebaseIdToken) },
   });
   return await parseJsonOrThrow<{ ok: boolean; message?: string }>(res);
 }

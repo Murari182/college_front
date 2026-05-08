@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { useToast } from "@/components/ui/toast";
 
 export default function TestAccountPage() {
+  const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -9,7 +11,7 @@ export default function TestAccountPage() {
   const handleSave = () => {
     // Logic to save locally or send to backend
     console.log("Saving Test Account:", { email, password });
-    alert("Test account saved successfully!");
+    toast.success("Test account saved successfully!");
   };
 
   return (

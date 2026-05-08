@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getAdvisorsDirectory,
   getMyStudentProfile,
@@ -8,8 +7,8 @@ import {
   type StudentProfileResponse,
   type BookingResponse,
   syncBookingStatus,
+  getSessionAccessToken,
 } from "@/lib/restApi";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -19,6 +18,7 @@ import { use3DTilt } from "@/hooks/use3DTilt";
 import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { MiniCalendar } from "@/components/MiniCalendar";
+import { useToast } from "@/components/ui/toast";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
@@ -26,6 +26,7 @@ const TABS = [
   { id: "predictor", label: "College Predictor", icon: Trophy },
   { id: "refer", label: "Refer & Earn", icon: Gift },
 ];
+const ADVISORS_PER_PAGE = 50;
 
 const ADVISOR_COLORS = [
   { bg: "bg-navy-light", text: "text-navy", border: "border-navy/10", gradient: "from-blue-500/10 to-navy/10" },
@@ -96,24 +97,24 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
 }
 
 function BookingCardContent({ booking }: { booking: BookingResponse }) {
+  const toast = useToast();
   const [syncing, setSyncing] = useState(false);
 
   const handleSyncStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const u = getFirebaseAuth().currentUser;
-    if (!u) return;
+    const token = getSessionAccessToken();
+    if (!token) return;
     setSyncing(true);
     try {
-      const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        alert("Payment verified!");
+        toast.success("Payment verified!");
         window.location.reload(); 
       } else {
-        alert(res.message || "Payment pending.");
+        toast.info(res.message || "Payment pending.");
       }
     } catch (err) {
-      alert("Sync failed.");
+      toast.error("Sync failed.");
     } finally {
       setSyncing(false);
     }
@@ -173,9 +174,10 @@ function BookingCardContent({ booking }: { booking: BookingResponse }) {
 }
 
 export default function StudentDashboard() {
+  const toast = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("advisors");
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
+  const [authUser, setAuthUser] = useState<{ displayName?: string; photoURL?: string } | null>(null);
   const [student, setStudent] = useState<StudentProfileResponse | null>(null);
   const [advisors, setAdvisors] = useState<AdvisorDirectoryItem[]>([]);
   const [advisorsLoading, setAdvisorsLoading] = useState(true);
@@ -183,19 +185,20 @@ export default function StudentDashboard() {
   const [selectedCollege, setSelectedCollege] = useState("All Colleges");
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentAdvisorPage, setCurrentAdvisorPage] = useState(1);
 
   useEffect(() => {
     document.title = "Student Dashboard | CollegeConnects";
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, u => {
-      setAuthUser(u);
-      if (u) {
-        loadProfile(u);
-      }
-    });
+    const token = getSessionAccessToken();
+    if (!token) {
+      navigate({ to: "/auth/signin" });
+      return;
+    }
+    setAuthUser({ displayName: localStorage.getItem("user_name") || "Student" });
+    void loadProfile(token);
   }, []);
 
-  const loadProfile = async (u: FirebaseUser) => {
+  const loadProfile = async (token: string) => {
     try {
       const storedRole = localStorage.getItem("user_role");
       if (storedRole && storedRole !== "student") {
@@ -203,7 +206,6 @@ export default function StudentDashboard() {
         return;
       }
 
-      const token = await u.getIdToken(true);
       const profile = await getMyStudentProfile(token);
       setStudent(profile);
       localStorage.setItem("user_role", "student");
@@ -211,7 +213,7 @@ export default function StudentDashboard() {
       console.error("StudentDashboard profile load failed:", e);
       const msg = e.message || "Access Denied";
       if (e.status === 403 || (msg && msg.includes("403"))) {
-        alert(msg);
+        toast.error(msg);
         if (!msg.includes("Dual-role")) {
            navigate({ to: "/advisor/dashboard" });
         }
@@ -238,10 +240,11 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "sessions" || !authUser) return;
+    if (activeTab !== "sessions") return;
     const loadBookings = async () => {
       try {
-        const token = await authUser.getIdToken(true);
+        const token = getSessionAccessToken();
+        if (!token) return;
         const list = await getMyBookings(token);
         setSessionBookings(list);
       } catch (e) {
@@ -267,6 +270,21 @@ export default function StudentDashboard() {
 
     return collegeMatch && branchMatch && searchMatch;
   });
+  const totalAdvisorPages = Math.max(1, Math.ceil(filteredAdvisors.length / ADVISORS_PER_PAGE));
+  const paginatedAdvisors = filteredAdvisors.slice(
+    (currentAdvisorPage - 1) * ADVISORS_PER_PAGE,
+    currentAdvisorPage * ADVISORS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setCurrentAdvisorPage(1);
+  }, [searchQuery, selectedCollege, selectedBranch]);
+
+  useEffect(() => {
+    if (currentAdvisorPage > totalAdvisorPages) {
+      setCurrentAdvisorPage(totalAdvisorPages);
+    }
+  }, [currentAdvisorPage, totalAdvisorPages]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-navy/10 selection:text-navy relative overflow-hidden">
@@ -379,11 +397,34 @@ export default function StudentDashboard() {
                   <p className="text-slate-500 font-medium">Try adjusting your filters or search terms.</p>
                 </div>
               ) : (
-                <motion.div variants={staggerContainer()} initial="initial" animate="animate" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredAdvisors.map((advisor) => (
-                    <AdvisorCard key={advisor.id} advisor={advisor} onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })} />
-                  ))}
-                </motion.div>
+                <div className="space-y-6">
+                  <motion.div variants={staggerContainer()} initial="initial" animate="animate" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {paginatedAdvisors.map((advisor) => (
+                      <AdvisorCard key={advisor.id} advisor={advisor} onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })} />
+                    ))}
+                  </motion.div>
+                  {totalAdvisorPages > 1 && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                      {Array.from({ length: totalAdvisorPages }, (_, index) => {
+                        const page = index + 1;
+                        const isActive = page === currentAdvisorPage;
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentAdvisorPage(page)}
+                            className={`min-w-10 h-10 px-3 rounded-xl border text-sm font-black transition-all ${
+                              isActive
+                                ? "bg-navy text-white border-navy shadow-lg shadow-navy/20"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-navy/30 hover:text-navy"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </motion.div>
           )}

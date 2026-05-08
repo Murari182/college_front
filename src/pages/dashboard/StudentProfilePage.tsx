@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getMyStudentProfile,
   getStudentReferralSummary,
   type StudentProfileResponse,
   type ReferralSummaryResponse,
   updateMyStudentProfile,
+  getSessionAccessToken,
 } from "@/lib/restApi";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, Monitor, IndianRupee, Gift, Loader, CheckCircle, MapPin, GraduationCap, Trophy, Mail, Phone, Edit3, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { use3DTilt } from "@/hooks/use3DTilt";
+import { useToast } from "@/components/ui/toast";
 
 export default function StudentProfilePage() {
+  const toast = useToast();
   const navigate = useNavigate();
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
   const [student, setStudent] = useState<StudentProfileResponse | null>(null);
   const [referralSummary, setReferralSummary] = useState<ReferralSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,18 +33,15 @@ export default function StudentProfilePage() {
   });
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setAuthUser(user);
-        fetchProfile(user);
-      } else {
-        navigate({ to: "/auth/signin" });
-      }
-    });
+    const token = getSessionAccessToken();
+    if (!token) {
+      navigate({ to: "/auth/signin" });
+      return;
+    }
+    void fetchProfile(token);
   }, [navigate]);
 
-  const fetchProfile = async (user: FirebaseUser) => {
+  const fetchProfile = async (token: string) => {
     try {
       const storedRole = localStorage.getItem("user_role");
       if (storedRole && storedRole !== "student") {
@@ -52,7 +49,6 @@ export default function StudentProfilePage() {
         return;
       }
 
-      const token = await user.getIdToken();
       const [prof, ref] = await Promise.all([
         getMyStudentProfile(token),
         getStudentReferralSummary(token),
@@ -72,7 +68,7 @@ export default function StudentProfilePage() {
       console.error(err);
       const msg = err.message || "Access Denied";
       if (err.status === 403 || (msg && msg.includes("403"))) {
-        alert(msg);
+        toast.error(msg);
         if (!msg.includes("Dual-role")) {
            navigate({ to: "/advisor/dashboard" });
         }
@@ -83,16 +79,17 @@ export default function StudentProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!authUser || !student) return;
+    if (!student) return;
     setSaving(true);
     try {
-      const token = await authUser.getIdToken();
+      const token = getSessionAccessToken();
+      if (!token) return;
       const updated = await updateMyStudentProfile(token, editForm);
       setStudent(updated);
       setIsEditing(false);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Update failed.");
+      toast.error(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSaving(false);
     }

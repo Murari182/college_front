@@ -2,8 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, GraduationCap, Table2, Search, Send, Trophy, CheckCircle2, XCircle, Info } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { getSessionAccessToken } from "@/lib/restApi";
 
 const JOSAA_2025_URL =
   "https://docs.google.com/spreadsheets/d/1UOihhPYYDPUcLN5coF2-wGxlR7DJQxGR/edit?usp=sharing&ouid=102708880640851630376&rtpof=true&sd=true";
@@ -60,7 +59,7 @@ function CollegeCard({ college, index }: { college: College; index: number }) {
 }
 
 export default function CollegePredictorPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<boolean>(false);
   const [rank, setRank] = useState<string>("");
   const [category, setCategory] = useState("OPEN");
   const [gender, setGender] = useState("Gender-Neutral");
@@ -72,8 +71,7 @@ export default function CollegePredictorPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, (u) => setUser(u));
+    setUser(Boolean(getSessionAccessToken()));
   }, []);
 
   const handleBack = () => {

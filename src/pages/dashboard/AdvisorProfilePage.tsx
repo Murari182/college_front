@@ -1,28 +1,66 @@
 import { useState, useEffect } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getMyAdvisorProfile,
   updateMyAdvisorProfile,
   uploadCollegeIdPairToS3,
   uploadProfilePictureToS3,
   type AdvisorProfileResponse,
+  getSessionAccessToken,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useToast } from "@/components/ui/toast";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "250", "300", "350", "400"];
+const GENDER_OPTIONS = ["Male", "Female", "Other"];
+const STUDY_YEAR_OPTIONS = ["1", "2", "3", "4", "5", "passed_out"] as const;
+const LANGUAGE_OPTIONS = [
+  "English",
+  "Hindi",
+  "Assamese",
+  "Bengali",
+  "Bodo",
+  "Dogri",
+  "Gujarati",
+  "Kannada",
+  "Kashmiri",
+  "Konkani",
+  "Maithili",
+  "Malayalam",
+  "Manipuri",
+  "Marathi",
+  "Nepali",
+  "Odia",
+  "Punjabi",
+  "Sanskrit",
+  "Santali",
+  "Sindhi",
+  "Tamil",
+  "Telugu",
+  "Urdu",
+];
+const TIME_SLOT_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+  const nextHour = (hour + 1) % 24;
+  const formatHour = (h: number) => {
+    const suffix = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12}:00 ${suffix}`;
+  };
+  return `${formatHour(hour)} - ${formatHour(nextHour)}`;
+});
 
 export default function AdvisorProfilePage() {
+  const toast = useToast();
   const navigate = useNavigate();
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
+  const [authUser, setAuthUser] = useState<{ email?: string } | null>(null);
   const [advisor, setAdvisor] = useState<AdvisorProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: "",
@@ -37,12 +75,13 @@ export default function AdvisorProfilePage() {
     jee_advanced_rank: "",
     personal_email: "",
     gender: "",
-    languages: "",
+    languages: [] as string[],
     detected_college: "",
     college_id_acknowledged: false,
     skills: "",
     achievements: "",
     preferred_timezones: [] as string[],
+    academic_status: "studying",
   });
   
   const [frontFile, setFrontFile] = useState<File | null>(null);
@@ -51,18 +90,16 @@ export default function AdvisorProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    return onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setAuthUser(user);
-        fetchProfile(user);
-      } else {
-        navigate({ to: "/auth/signin" });
-      }
-    });
+    const token = getSessionAccessToken();
+    if (!token) {
+      navigate({ to: "/auth/signin" });
+      return;
+    }
+    setAuthUser({ email: localStorage.getItem("user_email") || undefined });
+    void fetchProfile(token);
   }, [navigate]);
 
-  const fetchProfile = async (user: FirebaseUser) => {
+  const fetchProfile = async (token: string) => {
     try {
       const storedRole = localStorage.getItem("user_role");
       if (storedRole && storedRole !== "advisor") {
@@ -70,7 +107,6 @@ export default function AdvisorProfilePage() {
         return;
       }
 
-      const token = await user.getIdToken();
       const prof = await getMyAdvisorProfile(token);
       setAdvisor(prof);
       setEditForm({
@@ -86,18 +122,19 @@ export default function AdvisorProfilePage() {
         jee_advanced_rank: prof.jee_advanced_rank || "",
         personal_email: prof.personal_email || "",
         gender: prof.gender || "",
-        languages: prof.languages?.join(", ") || "",
+        languages: prof.languages || [],
         detected_college: prof.detected_college || "",
         college_id_acknowledged: !!prof.college_id_front_key, 
         skills: prof.skills || "",
         achievements: prof.achievements || "",
         preferred_timezones: prof.preferred_timezones || [],
+        academic_status: prof.current_study_year ? "studying" : "passed_out",
       });
     } catch (err: any) {
       console.error(err);
       const msg = err.message || "Access Denied";
       if (err.status === 403 || (msg && msg.includes("403"))) {
-        alert(msg);
+        toast.error(msg);
         if (!msg.includes("Dual-role")) {
            navigate({ to: "/advisor/dashboard" });
         }
@@ -108,13 +145,26 @@ export default function AdvisorProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!authUser || !advisor) return;
+    if (!advisor) return;
     setSaving(true);
     try {
-      const token = await authUser.getIdToken();
+      const token = getSessionAccessToken();
+      if (!token) return;
+      if (editForm.preferred_timezones.length < 4) {
+        toast.error("Please select at least 4 preferred time slots.");
+        setSaving(false);
+        return;
+      }
       let payload: any = { 
         ...editForm,
-        languages: editForm.languages.split(",").map(l => l.trim()).filter(l => !!l),
+        current_study_year:
+          editForm.current_study_year === "passed_out"
+            ? null
+            : editForm.current_study_year
+              ? Number(editForm.current_study_year)
+              : null,
+        academic_status:
+          editForm.current_study_year === "passed_out" ? "passed_out" : "studying",
         preferred_timezones: editForm.preferred_timezones
       };
       
@@ -134,9 +184,9 @@ export default function AdvisorProfilePage() {
       setIsEditing(false);
       setFrontFile(null);
       setBackFile(null);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update profile.");
+      toast.error(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -302,15 +352,32 @@ export default function AdvisorProfilePage() {
                            {field.label}
                         </label>
                         {isEditing ? (
-                          <input 
-                            type={field.type}
-                            value={editForm[field.key as keyof typeof editForm] as string} 
-                            onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
-                            className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all"
-                          />
+                          field.key === "gender" ? (
+                            <select
+                              value={editForm.gender}
+                              onChange={e => setEditForm(p => ({ ...p, gender: e.target.value }))}
+                              className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all"
+                            >
+                              <option value="">Select gender</option>
+                              {GENDER_OPTIONS.map(option => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input 
+                              type={field.type}
+                              value={editForm[field.key as keyof typeof editForm] as string} 
+                              onChange={e => setEditForm(p => ({...p, [field.key]: e.target.value}))}
+                              className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all"
+                            />
+                          )
                         ) : (
                           <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 truncate">
-                            {editForm[field.key as keyof typeof editForm] || "Not provided"}
+                            {field.key === "languages"
+                              ? editForm.languages.join(", ") || "Not provided"
+                              : (editForm[field.key as keyof typeof editForm] as string) || "Not provided"}
                           </div>
                         )}
                       </div>
@@ -350,9 +417,25 @@ export default function AdvisorProfilePage() {
                            <Clock size={11} strokeWidth={2.5} />
                            Current Study Year
                         </label>
-                        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
-                          {formatStudyYearLabel(effectiveYear)}
-                        </div>
+                        {isEditing ? (
+                          <select
+                            value={editForm.current_study_year || "passed_out"}
+                            onChange={e => setEditForm(p => ({ ...p, current_study_year: e.target.value }))}
+                            className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-mango/40 outline-none transition-all"
+                          >
+                            {STUDY_YEAR_OPTIONS.map(option => (
+                              <option key={option} value={option}>
+                                {option === "passed_out" ? "Passed Out" : `Year ${option}`}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+                            {editForm.current_study_year === "passed_out"
+                              ? "Passed Out"
+                              : formatStudyYearLabel(effectiveYear)}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -391,15 +474,53 @@ export default function AdvisorProfilePage() {
                        Languages
                     </label>
                     {isEditing ? (
-                      <input 
-                        value={editForm.languages} 
-                        onChange={e => setEditForm(p => ({...p, languages: e.target.value}))}
-                        placeholder="English, Hindi..."
-                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-slate-900/10 outline-none transition-all"
-                      />
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsLanguageDropdownOpen(prev => !prev)}
+                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-left focus:bg-white focus:border-slate-900/10 outline-none transition-all flex items-center justify-between"
+                        >
+                          <span>
+                            {editForm.languages.length > 0
+                              ? editForm.languages.join(", ")
+                              : "Select one or more languages"}
+                          </span>
+                          <ChevronDown size={14} className="text-slate-400" />
+                        </button>
+                        {isLanguageDropdownOpen && (
+                          <div className="absolute z-20 mt-2 w-full bg-white border border-slate-100 rounded-2xl shadow-lg p-3 max-h-64 overflow-y-auto">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {LANGUAGE_OPTIONS.map(language => {
+                                const checked = editForm.languages.includes(language);
+                                return (
+                                  <label
+                                    key={language}
+                                    className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() =>
+                                        setEditForm(prev => ({
+                                          ...prev,
+                                          languages: checked
+                                            ? prev.languages.filter(item => item !== language)
+                                            : [...prev.languages, language],
+                                        }))
+                                      }
+                                      className="accent-slate-900"
+                                    />
+                                    {language}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700">
-                        {editForm.languages || "Not provided"}
+                        {editForm.languages.join(", ") || "Not provided"}
                       </div>
                     )}
                   </div>
@@ -510,35 +631,31 @@ export default function AdvisorProfilePage() {
                           </div>
                         ))}
                       </div>
-                      <div className="flex gap-2">
-                        <input 
-                          id="new-slot-input"
-                          placeholder="e.g. 10:00 AM - 11:00 AM" 
-                          className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm outline-none focus:border-navy"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const val = (e.target as HTMLInputElement).value.trim();
-                              if (val && !editForm.preferred_timezones.includes(val)) {
-                                setEditForm(p => ({...p, preferred_timezones: [...p.preferred_timezones, val]}));
-                                (e.target as HTMLInputElement).value = "";
-                              }
-                            }
-                          }}
-                        />
-                        <button 
-                          onClick={() => {
-                            const input = document.getElementById("new-slot-input") as HTMLInputElement;
-                            const val = input.value.trim();
-                            if (val && !editForm.preferred_timezones.includes(val)) {
-                              setEditForm(p => ({...p, preferred_timezones: [...p.preferred_timezones, val]}));
-                              input.value = "";
-                            }
-                          }}
-                          className="bg-navy text-white px-4 rounded-xl text-xs font-bold"
-                        >
-                          Add
-                        </button>
-                      </div>
+                      <select
+                        value=""
+                        onChange={e => {
+                          const value = e.target.value;
+                          if (!value) return;
+                          if (!editForm.preferred_timezones.includes(value)) {
+                            setEditForm(p => ({ ...p, preferred_timezones: [...p.preferred_timezones, value] }));
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm outline-none focus:border-navy"
+                      >
+                        <option value="">Select one-hour time slot</option>
+                        {TIME_SLOT_OPTIONS.map(slot => (
+                          <option
+                            key={slot}
+                            value={slot}
+                            disabled={editForm.preferred_timezones.includes(slot)}
+                          >
+                            {slot}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Select at least 4 time slots (you can select more).
+                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
