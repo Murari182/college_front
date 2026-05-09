@@ -29,7 +29,14 @@ export default function SignupPage() {
   const [signupToken, setSignupToken] = useState<string | null>(null);
   const [sessionPrice, setSessionPrice] = useState("199");
   const [preferredTimings, setPreferredTimings] = useState<string[]>([]);
-  const [newTiming, setNewTiming] = useState("");
+  const [newTiming, setNewTiming] = useState("10 AM - 11 AM");
+
+  const TIMING_SLOTS = [
+    "8 AM - 9 AM", "9 AM - 10 AM", "10 AM - 11 AM", "11 AM - 12 PM",
+    "12 PM - 1 PM", "1 PM - 2 PM", "2 PM - 3 PM", "3 PM - 4 PM",
+    "4 PM - 5 PM", "5 PM - 6 PM", "6 PM - 7 PM", "7 PM - 8 PM",
+    "8 PM - 9 PM", "9 PM - 10 PM", "10 PM - 11 PM"
+  ];
 
   // Dynamic Theme Colors - Professional Academic Palette (Navy & Mango)
   const activeColor = role === "student" ? "bg-[#1E3A8A]" : "bg-[#F5A623]";
@@ -106,7 +113,7 @@ export default function SignupPage() {
         toast.error(e instanceof Error ? e.message : "Signup failed.");
       }
     } finally {
-      if (role === "student") setBusy(false);
+      setBusy(false);
     }
   };
 
@@ -331,13 +338,15 @@ export default function SignupPage() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="e.g. 10 AM - 12 PM" 
+                  <select 
                     value={newTiming}
                     onChange={(e) => setNewTiming(e.target.value)}
                     className={`flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
-                  />
+                  >
+                    {TIMING_SLOTS.map(slot => (
+                      <option key={slot} value={slot}>{slot}</option>
+                    ))}
+                  </select>
                   <button 
                     onClick={() => {
                       if (newTiming.trim()) {

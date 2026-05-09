@@ -88,7 +88,7 @@ function AdvisorCard({ advisor, index }: { advisor: Advisor; index: number; key?
 export default function AdvisorsSection() {
   const { data: backendAdvisors } = useGetAllAdvisors();
   const advisors = (backendAdvisors && backendAdvisors.length > 0 ? backendAdvisors : SAMPLE_ADVISORS)
-    .filter(a => !!a.branch && !!a.jee_mains_rank && !!a.college_id_front_key);
+    .filter(a => !!a.name && a.name !== "New User");
 
   return (
     <section id="advisors" className="relative py-24 px-4 sm:px-6 overflow-hidden">
