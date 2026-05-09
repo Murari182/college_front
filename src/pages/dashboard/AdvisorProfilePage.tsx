@@ -6,6 +6,7 @@ import {
   uploadProfilePictureToS3,
   type AdvisorProfileResponse,
   getSessionAccessToken,
+  deleteMyAdvisorProfile,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
 import { computeProfileCompletion, getCompletionBadge } from "@/lib/profileCompletion";
@@ -13,6 +14,17 @@ import { useNavigate } from "@tanstack/react-router";
 import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera, Target, Award, Languages, UserCircle, ChevronDown, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "@/components/ui/toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "250", "300", "350", "400"];
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
@@ -61,6 +73,8 @@ export default function AdvisorProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: "",
@@ -189,6 +203,22 @@ export default function AdvisorProfilePage() {
       toast.error(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== "confirm") return;
+    setDeleting(true);
+    try {
+      const token = getSessionAccessToken();
+      if (!token) return;
+      await deleteMyAdvisorProfile(token);
+      localStorage.clear();
+      navigate({ to: "/" });
+      toast.success("Account deleted permanently");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
+      setDeleting(false);
     }
   };
 
@@ -785,6 +815,67 @@ export default function AdvisorProfilePage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Danger Zone */}
+          <div className="pt-12 mt-12 border-t border-slate-100">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="w-1.5 h-6 bg-red-500 rounded-full" />
+              <h3 className="text-2xl font-display font-bold text-slate-900">Danger Zone</h3>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-[2rem] p-8 flex flex-col sm:flex-row gap-6 items-center justify-between">
+              <div>
+                <h4 className="text-red-900 font-bold mb-1 flex items-center gap-2">
+                  <AlertTriangle size={18} /> Delete Account Permanently
+                </h4>
+                <p className="text-sm text-red-700 font-medium">
+                  This action cannot be undone. All your bookings, history, and profile data will be permanently wiped.
+                </p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="px-6 py-3 bg-white text-red-600 hover:bg-red-600 hover:text-white border border-red-200 font-bold rounded-xl transition-all whitespace-nowrap shadow-sm">
+                    Delete Account
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-[2rem]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl font-display font-bold text-slate-900">Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-600 text-sm font-medium">
+                      This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                      <div className="mt-4">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-2 block">
+                          Type "confirm" to verify
+                        </label>
+                        <input
+                          type="text"
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          placeholder="confirm"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all"
+                        />
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="mt-6 gap-3 sm:gap-0">
+                    <AlertDialogCancel 
+                      onClick={() => setDeleteConfirmText("")} 
+                      className="rounded-xl h-12 font-bold text-slate-600 border-slate-200 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleteConfirmText.toLowerCase() !== "confirm" || deleting}
+                      className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white h-12 px-6 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      {deleting ? <Loader size={18} className="animate-spin" /> : "Delete Permanently"}
+                    </button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+
         </motion.div>
       </div>
     </div>
