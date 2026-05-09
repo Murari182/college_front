@@ -8,8 +8,20 @@ import {
   getSessionAccessToken,
 } from "@/lib/restApi";
 import { useNavigate } from "@tanstack/react-router";
-import { User, Monitor, IndianRupee, Gift, Loader, CheckCircle, MapPin, GraduationCap, Trophy, Mail, Phone, Edit3, X } from "lucide-react";
+import { User, Monitor, IndianRupee, Gift, Loader, CheckCircle, MapPin, GraduationCap, Trophy, Mail, Phone, Edit3, X, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteMyStudentProfile } from "@/lib/restApi";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { useToast } from "@/components/ui/toast";
 
@@ -21,6 +33,8 @@ export default function StudentProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: "",
@@ -92,6 +106,22 @@ export default function StudentProfilePage() {
       toast.error(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== "confirm") return;
+    setDeleting(true);
+    try {
+      const token = getSessionAccessToken();
+      if (!token) return;
+      await deleteMyStudentProfile(token);
+      localStorage.clear();
+      navigate({ to: "/" });
+      toast.success("Account deleted permanently");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
+      setDeleting(false);
     }
   };
 
@@ -213,6 +243,67 @@ export default function StudentProfilePage() {
                  </motion.div>
                )}
             </AnimatePresence>
+
+            {/* Danger Zone */}
+            <div className="pt-12 mt-12 border-t border-slate-100">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="w-1.5 h-6 bg-red-500 rounded-full" />
+                <h3 className="text-2xl font-display font-bold text-slate-900">Danger Zone</h3>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-[2rem] p-8 flex flex-col sm:flex-row gap-6 items-center justify-between">
+                <div>
+                  <h4 className="text-red-900 font-bold mb-1 flex items-center gap-2">
+                    <AlertTriangle size={18} /> Delete Account Permanently
+                  </h4>
+                  <p className="text-sm text-red-700 font-medium">
+                    This action cannot be undone. All your bookings, history, and profile data will be permanently wiped.
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="px-6 py-3 bg-white text-red-600 hover:bg-red-600 hover:text-white border border-red-200 font-bold rounded-xl transition-all whitespace-nowrap shadow-sm">
+                      Delete Account
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-[2rem]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-xl font-display font-bold text-slate-900">Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-slate-600 text-sm font-medium">
+                        This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                        <div className="mt-4">
+                          <label className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-2 block">
+                            Type "confirm" to verify
+                          </label>
+                          <input
+                            type="text"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="confirm"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all"
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6 gap-3 sm:gap-0">
+                      <AlertDialogCancel 
+                        onClick={() => setDeleteConfirmText("")} 
+                        className="rounded-xl h-12 font-bold text-slate-600 border-slate-200 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText.toLowerCase() !== "confirm" || deleting}
+                        className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white h-12 px-6 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                      >
+                        {deleting ? <Loader size={18} className="animate-spin" /> : "Delete Permanently"}
+                      </button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+
           </div>
         </motion.div>
       </div>

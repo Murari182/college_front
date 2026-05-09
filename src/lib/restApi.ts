@@ -746,3 +746,21 @@ export async function syncBookingStatus(firebaseIdToken: string, bookingId: stri
   });
   return await parseJsonOrThrow<{ ok: boolean; message?: string }>(res);
 }
+
+export async function deleteMyStudentProfile(firebaseIdToken: string): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch(url("/api/students/me"), {
+    method: "DELETE",
+    headers: { Authorization: bearerToken(firebaseIdToken) },
+  });
+  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  return await parseJsonOrThrow<{ ok: boolean; message: string }>(res);
+}
+
+export async function deleteMyAdvisorProfile(firebaseIdToken: string): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch(url("/api/advisors/me"), {
+    method: "DELETE",
+    headers: { Authorization: bearerToken(firebaseIdToken) },
+  });
+  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  return await parseJsonOrThrow<{ ok: boolean; message: string }>(res);
+}
