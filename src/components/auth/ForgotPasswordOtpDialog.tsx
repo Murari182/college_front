@@ -161,7 +161,7 @@ export function ForgotPasswordOtpDialog({
                 id="fp-new-pass"
                 label="New password"
                 value={newPassword}
-                onChange={setNewPassword}
+                onChange={(v) => setNewPassword(v)}
                 variant={accent === "orange" ? "orange" : "teal"}
                 autoComplete="new-password"
               />
@@ -169,7 +169,7 @@ export function ForgotPasswordOtpDialog({
                 id="fp-confirm-pass"
                 label="Confirm new password"
                 value={confirmPassword}
-                onChange={setConfirmPassword}
+                onChange={(v) => setConfirmPassword(v)}
                 variant={accent === "orange" ? "orange" : "teal"}
                 autoComplete="new-password"
               />
