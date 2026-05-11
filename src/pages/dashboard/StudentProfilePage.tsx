@@ -6,6 +6,7 @@ import {
   type ReferralSummaryResponse,
   updateMyStudentProfile,
   getSessionAccessToken,
+  clearStoredAuthSession,
 } from "@/lib/restApi";
 import { useNavigate } from "@tanstack/react-router";
 import { User, Monitor, IndianRupee, Gift, Loader, CheckCircle, MapPin, GraduationCap, Trophy, Mail, Phone, Edit3, X, AlertTriangle } from "lucide-react";
@@ -116,9 +117,8 @@ export default function StudentProfilePage() {
       const token = getSessionAccessToken();
       if (!token) return;
       await deleteMyStudentProfile(token);
-      localStorage.clear();
-      navigate({ to: "/" });
-      toast.success("Account deleted permanently");
+      clearStoredAuthSession();
+      window.location.href = "/";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete account");
       setDeleting(false);
@@ -265,7 +265,7 @@ export default function StudentProfilePage() {
                       Delete Account
                     </button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="rounded-[2rem]">
+                  <AlertDialogContent className="rounded-[2rem] bg-white">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-xl font-display font-bold text-slate-900">Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription className="text-slate-600 text-sm font-medium">

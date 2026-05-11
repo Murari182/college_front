@@ -1,6 +1,13 @@
 // Use environment variable for production, or fallback to empty (Vite proxy) for local development.
 const API_URL = import.meta.env.VITE_REST_API_URL || "";
 const BACKEND_ACCESS_TOKEN_KEY = "backend_access_token";
+const SESSION_KEYS = [
+  BACKEND_ACCESS_TOKEN_KEY,
+  "user_role",
+  "user_name",
+  "user_email",
+] as const;
+export const AUTH_SESSION_CHANGED_EVENT = "collegeconnects-auth-session-changed";
 
 function url(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -63,6 +70,14 @@ export function clearStoredBackendAccessToken(): void {
   localStorage.removeItem(BACKEND_ACCESS_TOKEN_KEY);
 }
 
+export function clearStoredAuthSession(): void {
+  if (typeof window === "undefined") return;
+  for (const key of SESSION_KEYS) {
+    localStorage.removeItem(key);
+  }
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
+}
+
 function bearerToken(firebaseOrBackendToken: string): string {
   const token = getSessionAccessToken() || firebaseOrBackendToken;
   return `Bearer ${token}`;
@@ -106,6 +121,7 @@ export type AdvisorProfileResponse = {
   total_earnings?: number;
   total_sessions?: number;
   total_students?: number;
+  profile_picture?: string;
   college_id_front_key?: string;
   college_id_back_key?: string;
 };
@@ -135,8 +151,11 @@ export type StudentProfileResponse = {
   jee_advanced_rank?: string;
   languages?: string[];
   language_other?: string;
+  current_study_year?: number;
+  jee_prep_status?: string;
   total_spent?: number;
   total_sessions?: number;
+  created_at?: string;
 };
 
 export type AdvisorDirectoryItem = {

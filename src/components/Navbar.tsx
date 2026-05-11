@@ -2,7 +2,11 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { clearStoredBackendAccessToken, getSessionAccessToken } from "@/lib/restApi";
+import {
+  AUTH_SESSION_CHANGED_EVENT,
+  clearStoredAuthSession,
+  getSessionAccessToken,
+} from "@/lib/restApi";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDropdown } from "./ProfileDropdown";
 
@@ -21,15 +25,26 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = getSessionAccessToken();
-    if (!token) {
-      setAuthUser(null);
-      return;
-    }
-    setAuthUser({
-      displayName: localStorage.getItem("user_name") || "User",
-      photoURL: undefined,
-    });
+    const syncAuthUser = () => {
+      const token = getSessionAccessToken();
+      if (!token) {
+        setAuthUser(null);
+        return;
+      }
+      setAuthUser({
+        displayName: localStorage.getItem("user_name") || "User",
+        photoURL: undefined,
+      });
+    };
+
+    syncAuthUser();
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthUser);
+    window.addEventListener("storage", syncAuthUser);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthUser);
+      window.removeEventListener("storage", syncAuthUser);
+    };
   }, []);
 
   const isHomePage = location.pathname === "/";
@@ -155,10 +170,7 @@ export default function Navbar() {
                 {authUser ? (
                   <button 
                     onClick={() => {
-                        clearStoredBackendAccessToken();
-                        localStorage.removeItem("user_role");
-                        localStorage.removeItem("user_name");
-                        localStorage.removeItem("user_email");
+                        clearStoredAuthSession();
                         setMobileOpen(false);
                         window.location.href = "/";
                     }} 

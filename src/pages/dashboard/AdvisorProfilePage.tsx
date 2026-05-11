@@ -6,6 +6,7 @@ import {
   uploadProfilePictureToS3,
   type AdvisorProfileResponse,
   getSessionAccessToken,
+  clearStoredAuthSession,
   deleteMyAdvisorProfile,
 } from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
@@ -213,9 +214,8 @@ export default function AdvisorProfilePage() {
       const token = getSessionAccessToken();
       if (!token) return;
       await deleteMyAdvisorProfile(token);
-      localStorage.clear();
-      navigate({ to: "/" });
-      toast.success("Account deleted permanently");
+      clearStoredAuthSession();
+      window.location.href = "/";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete account");
       setDeleting(false);
@@ -837,7 +837,7 @@ export default function AdvisorProfilePage() {
                     Delete Account
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-[2rem]">
+                <AlertDialogContent className="rounded-[2rem] bg-white">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-xl font-display font-bold text-slate-900">Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription className="text-slate-600 text-sm font-medium">
