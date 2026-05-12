@@ -63,11 +63,13 @@ export function setSessionAccessToken(token: string): void {
   const cleaned = token.trim();
   if (!cleaned) return;
   localStorage.setItem(BACKEND_ACCESS_TOKEN_KEY, cleaned);
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
 }
 
 export function clearStoredBackendAccessToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(BACKEND_ACCESS_TOKEN_KEY);
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
 }
 
 export function clearStoredAuthSession(): void {
