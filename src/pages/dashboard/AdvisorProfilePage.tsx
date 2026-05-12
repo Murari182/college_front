@@ -861,9 +861,10 @@ export default function AdvisorProfilePage() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-          </div>
-        </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
-    </div>
-  );
+    );
 }

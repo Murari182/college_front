@@ -382,11 +382,9 @@ export default function StudentProfilePage() {
                   </AlertDialog>
                 </div>
               </div>
-
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
-    </div>
-  );
+    );
 }
