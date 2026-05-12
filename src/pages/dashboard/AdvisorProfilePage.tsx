@@ -377,8 +377,6 @@ export default function AdvisorProfilePage() {
               )}
             </div>
           </div>
-        </div>
-
         <div className="p-8 sm:p-12 pt-0">
             {isEditing && (
               <motion.div 
@@ -864,6 +862,7 @@ export default function AdvisorProfilePage() {
                 </div>
               </div>
             </div>
+          </div>
         </motion.div>
       </div>
     </div>
