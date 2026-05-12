@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,6 +39,8 @@ export function ForgotPasswordOtpDialog({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const accentClasses = useMemo(() => {
     return accent === "orange"
@@ -59,11 +61,32 @@ export function ForgotPasswordOtpDialog({
     setConfirmPassword("");
     setHint(null);
     setBusy(false);
+    setTimeLeft(0);
+    if (timerRef.current) clearInterval(timerRef.current);
   };
 
   const close = () => {
     onOpenChange(false);
     resetLocal();
+  };
+
+  useEffect(() => {
+    if (timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
   const handleSendOtp = async () => {
@@ -75,7 +98,8 @@ export function ForgotPasswordOtpDialog({
     setHint(null);
     try {
       const res = await requestPasswordResetOtp(role, email.trim());
-      setHint(`OTP sent. It expires in ${Math.round(res.expires_in_seconds / 60)} minutes.`);
+      setHint(`OTP sent.`);
+      setTimeLeft(res.expires_in_seconds);
       setStep("confirm");
     } catch (e) {
       setHint(e instanceof Error ? e.message : "Could not send OTP.");
@@ -176,7 +200,29 @@ export function ForgotPasswordOtpDialog({
             </>
           ) : null}
 
-          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+          {step === "confirm" && (
+            <div className="flex flex-col items-center gap-2">
+              {timeLeft > 0 ? (
+                <p className="text-xs font-medium text-muted-foreground">
+                  OTP expires in: <span className="text-foreground font-mono">{formatTime(timeLeft)}</span>
+                </p>
+              ) : (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-xs text-red-500 font-medium">OTP expired.</p>
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={busy}
+                    className="text-xs font-bold text-navy hover:underline underline-offset-4 disabled:opacity-50"
+                  >
+                    {busy ? "Resending..." : "Resend OTP"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hint ? <p className="text-xs text-muted-foreground text-center">{hint}</p> : null}
         </div>
 
         <DialogFooter>
