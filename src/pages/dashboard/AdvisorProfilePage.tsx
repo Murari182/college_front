@@ -377,8 +377,9 @@ export default function AdvisorProfilePage() {
               )}
             </div>
           </div>
+        </div>
 
-          <div className="p-8 sm:p-12 pt-0">
+        <div className="p-8 sm:p-12 pt-0">
             {isEditing && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
