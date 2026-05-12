@@ -65,7 +65,7 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
              <h4 className="text-xl font-black text-slate-900 group-hover:text-navy transition-colors truncate">
               {advisor.name}
             </h4>
-            {advisor.session_price > 150 && (
+            {Number(advisor.session_price) > 150 && (
               <span className="bg-mango/10 text-mango-dark text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Top Rated</span>
             )}
           </div>
@@ -79,7 +79,7 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
 
       <div className="flex-1 mb-8">
         <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed font-bold italic opacity-80 group-hover:opacity-100 transition-opacity">
-          "{advisor.bio?.length > 10 ? advisor.bio : dummyBio}"
+          "{(advisor.bio?.length ?? 0) > 10 ? advisor.bio : dummyBio}"
         </p>
       </div>
 

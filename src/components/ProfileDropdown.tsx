@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, LayoutDashboard, CheckCircle2 } from "lucide-react";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import {
-  clearStoredBackendAccessToken,
+  clearStoredAuthSession,
   getSessionAccessToken,
   getMyStudentProfile,
   getMyAdvisorProfile,
@@ -49,10 +49,7 @@ export function ProfileDropdown({ role, userName, avatarUrl }: ProfileDropdownPr
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem("user_role");
-      localStorage.removeItem("user_name");
-      localStorage.removeItem("user_email");
-      clearStoredBackendAccessToken();
+      clearStoredAuthSession();
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed:", error);

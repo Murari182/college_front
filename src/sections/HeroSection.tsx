@@ -22,7 +22,7 @@ function Floating3DCard({
   advisor: AdvisorDirectoryItem; 
   index: number; 
   scrollProgress: any;
-  constraintsRef: React.RefObject<HTMLDivElement>;
+  constraintsRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [zIndex, setZIndex] = useState(index + 1);
   const controls = useAnimation();
