@@ -383,8 +383,9 @@ export default function StudentProfilePage() {
                 </div>
               </div>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
-    );
+    </div>
+  );
 }
