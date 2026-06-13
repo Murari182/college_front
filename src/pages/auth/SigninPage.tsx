@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
-import { getMyStudentProfile, getMyAdvisorProfile } from "@/lib/restApi";
+import { ApiError, getMyAdvisorProfile, getMyStudentProfile } from "@/lib/restApi";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { Loader, LogIn } from "lucide-react";
@@ -17,13 +17,19 @@ export default function SigninPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  function clearAuthError() {
+    setAuthError(null);
+  }
 
   async function handleLogin() {
     if (!email || !password) {
-      alert("Please enter email and password.");
+      setAuthError("Please enter email and password.");
       return;
     }
     setBusy(true);
+    setAuthError(null);
     try {
       // 1. Firebase Auth
       const userCred = await signInWithEmailAndPassword(
@@ -44,18 +50,18 @@ export default function SigninPage() {
           localStorage.setItem("user_role", "advisor");
           navigate({ to: "/advisor/dashboard" });
         }
-      } catch (err: any) {
-        // Handle 403 Role Conflict specifically
-        if (err.status === 403 || (err.message && err.message.includes("403"))) {
-          const otherRole = role === "student" ? "Advisor" : "Student";
-          alert(`It looks like you have an ${otherRole} account. Please switch to "I'm an ${otherRole}" above.`);
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          setAuthError(err.message);
         } else {
-          alert(`Profile not found. You don't have a ${role} account. Try switching roles or signing up.`);
+          setAuthError(
+            `We could not load your ${role} profile. Try switching roles or signing up.`,
+          );
         }
         await getFirebaseAuth().signOut();
       }
-    } catch (e) {
-      alert(formatFirebaseAuthError(e));
+    } catch (e: unknown) {
+      setAuthError(formatFirebaseAuthError(e));
     } finally {
       setBusy(false);
     }
@@ -70,7 +76,11 @@ export default function SigninPage() {
         {/* Role Selection — color-coded for clarity */}
         <div className="flex p-1.5 bg-slate-100 rounded-2xl gap-1.5">
           <button
-            onClick={() => setRole("student")}
+            type="button"
+            onClick={() => {
+              setRole("student");
+              clearAuthError();
+            }}
             className={`flex-1 py-2.5 text-sm font-black rounded-xl transition-all duration-300 ${
               role === "student"
                 ? "bg-[#1E3A8A] text-white shadow-lg shadow-navy/20"
@@ -80,7 +90,11 @@ export default function SigninPage() {
             I'm a Student
           </button>
           <button
-            onClick={() => setRole("advisor")}
+            type="button"
+            onClick={() => {
+              setRole("advisor");
+              clearAuthError();
+            }}
             className={`flex-1 py-2.5 text-sm font-black rounded-xl transition-all duration-300 ${
               role === "advisor"
                 ? "bg-[#F5A623] text-white shadow-lg shadow-mango/20"
@@ -97,7 +111,10 @@ export default function SigninPage() {
             type="email"
             placeholder="you@college.edu"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearAuthError();
+            }}
             className={`bg-white border-2 ${
               role === "student" ? "focus:border-[#1E3A8A]" : "focus:border-[#F5A623]"
             } border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-medium focus:outline-none transition-colors placeholder:text-slate-300`}
@@ -107,10 +124,22 @@ export default function SigninPage() {
         <PasswordField
           label="Password"
           value={password}
-          onChange={setPassword}
+          onChange={(v) => {
+            setPassword(v);
+            clearAuthError();
+          }}
           variant={role === "student" ? "teal" : "orange"}
           autoComplete="current-password"
         />
+
+        {authError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm"
+          >
+            {authError}
+          </div>
+        ) : null}
 
         <div className="flex flex-col sm:flex-row gap-3 mt-2">
           <Button

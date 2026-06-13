@@ -35,6 +35,10 @@ const PUBLIC: Record<string, RouteSeo> = {
     title: `About | ${SITE_NAME}`,
     description: `Learn about ${SITE_NAME}, our mission, and how we connect students with verified college advisors.`,
   },
+  "/team": {
+    title: `Our Team | ${SITE_NAME}`,
+    description: `Meet the leadership team behind ${SITE_NAME}.`,
+  },
   "/contact": {
     title: `Contact | ${SITE_NAME}`,
     description: `Contact ${SITE_NAME} for support, partnerships, and questions about student-advisor sessions.`,

@@ -12,6 +12,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { User, Monitor, IndianRupee, Gift, Loader, CheckCircle, MapPin, GraduationCap, Trophy, Mail, Phone, Edit3, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { use3DTilt } from "@/hooks/use3DTilt";
+import { toast } from "sonner";
 
 export default function StudentProfilePage() {
   const navigate = useNavigate();
@@ -77,9 +78,9 @@ export default function StudentProfilePage() {
       const updated = await updateMyStudentProfile(token, editForm);
       setStudent(updated);
       setIsEditing(false);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully.");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Update failed.");
+      toast.error(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSaving(false);
     }

@@ -18,6 +18,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
@@ -105,13 +106,13 @@ function BookingCardContent({ booking }: { booking: BookingResponse }) {
       const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        alert("Payment verified!");
+        toast.success("Payment verified.");
         window.location.reload(); 
       } else {
-        alert(res.message || "Payment pending.");
+        toast.message(res.message || "Payment pending.");
       }
     } catch (err) {
-      alert("Sync failed.");
+      toast.error("Sync failed.");
     } finally {
       setSyncing(false);
     }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 
 const COLLEGES_WITH_BRANCHES: Record<string, string[]> = {
@@ -57,7 +58,7 @@ export default function CTASection() {
 
   const handleSearch = () => {
     if (!selectedCollege) {
-      alert("Please select a college first!");
+      toast.error("Please select a college first.");
       return;
     }
     // If not logged in, show auth prompt
@@ -76,7 +77,7 @@ export default function CTASection() {
 
   const handleSendInquiry = async () => {
     if (!inquiryName || !inquiryEmail || !inquiryCollege || !inquiryBranch) {
-      alert("Please fill all fields!");
+      toast.error("Please fill all fields.");
       return;
     }
     setSendingInquiry(true);

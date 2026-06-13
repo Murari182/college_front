@@ -2,7 +2,13 @@ import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
-import { requestSignupOtp, verifySignupOtp, registerStudent, registerAdvisor } from "@/lib/restApi";
+import {
+  ApiError,
+  registerAdvisor,
+  registerStudent,
+  requestSignupOtp,
+  verifySignupOtp,
+} from "@/lib/restApi";
 import { FirebaseError } from "firebase/app";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { signInWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -23,6 +29,13 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
+
+  function clearMessages() {
+    setFormError(null);
+    setOtpNotice(null);
+  }
 
   // Dynamic Theme Colors - Professional Academic Palette (Navy & Mango)
   const activeColor = role === "student" ? "bg-[#1E3A8A]" : "bg-[#F5A623]";
@@ -49,18 +62,26 @@ export default function SignupPage() {
 
   const handleSendOtp = async (isResend = false) => {
     if (role === "advisor" && isPersonalEmail(email)) {
-      alert("Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.");
+      setFormError(
+        "Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.",
+      );
+      setOtpNotice(null);
       return;
     }
     setBusy(true);
+    clearMessages();
     try {
       await requestSignupOtp(role, email.trim());
       setOtpSent(true);
       if (!isResend) setStep(4);
       setResendTimer(60); // Start 60s cooldown
-      alert(isResend ? "New verification code sent!" : "Verification code sent to your email.");
+      setOtpNotice(
+        isResend ? "New verification code sent!" : "Verification code sent to your email.",
+      );
+      setFormError(null);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to send OTP.");
+      setOtpNotice(null);
+      setFormError(e instanceof Error ? e.message : "Failed to send OTP.");
     } finally {
       setBusy(false);
     }
@@ -68,10 +89,12 @@ export default function SignupPage() {
 
   const handleVerifyAndSignup = async () => {
     if (!otp) {
-      alert("Please enter the verification code.");
+      setFormError("Please enter the verification code.");
+      setOtpNotice(null);
       return;
     }
     setBusy(true);
+    clearMessages();
     try {
       await verifySignupOtp(role, email.trim(), otp.trim(), password);
       const auth = getFirebaseAuth();
@@ -103,12 +126,13 @@ export default function SignupPage() {
       }
     } catch (e) {
       if (e instanceof FirebaseError) {
-        alert(formatFirebaseAuthError(e));
-      } else if (e.message && e.message.includes("409")) {
-        alert("This email is already registered. Please Sign In instead.");
+        setFormError(formatFirebaseAuthError(e));
+      } else if (e instanceof ApiError && e.status === 409) {
+        setFormError("This email is already registered. Please Sign In instead.");
       } else {
-        alert(e instanceof Error ? e.message : "Signup failed.");
+        setFormError(e instanceof Error ? e.message : "Signup failed.");
       }
+      setOtpNotice(null);
     } finally {
       setBusy(false);
     }
@@ -125,6 +149,22 @@ export default function SignupPage() {
       }
     >
       <div className="flex flex-col gap-8">
+        {formError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm"
+          >
+            {formError}
+          </div>
+        ) : null}
+        {otpNotice ? (
+          <div
+            role="status"
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm"
+          >
+            {otpNotice}
+          </div>
+        ) : null}
         {step === 1 && (
           <div className="relative flex p-1.5 bg-slate-50 border border-slate-100 rounded-2xl gap-1">
             {/* Sliding Pill Background */}
@@ -141,14 +181,22 @@ export default function SignupPage() {
             />
 
             <button 
-              onClick={() => setRole("student")} 
+              type="button"
+              onClick={() => {
+                setRole("student");
+                clearMessages();
+              }} 
               className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "student" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
             >
               <GraduationCap size={16} strokeWidth={2.5} />
               I'm a Student
             </button>
             <button 
-              onClick={() => setRole("advisor")} 
+              type="button"
+              onClick={() => {
+                setRole("advisor");
+                clearMessages();
+              }} 
               className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "advisor" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
             >
               <ShieldCheck size={16} strokeWidth={2.5} />
@@ -166,7 +214,10 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="John Doe" 
                   value={name} 
-                  onChange={(e) => setName(e.target.value)} 
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
                 />
               </div>
@@ -179,12 +230,23 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="REF123" 
                   value={referralCode} 
-                  onChange={(e) => setReferralCode(e.target.value)} 
+                  onChange={(e) => {
+                    setReferralCode(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md uppercase tracking-wider`} 
                 />
               </div>
               <Button 
-                onClick={() => name ? nextStep() : alert("Please enter your name")} 
+                onClick={() => {
+                  if (!name) {
+                    setFormError("Please enter your name.");
+                    setOtpNotice(null);
+                    return;
+                  }
+                  clearMessages();
+                  nextStep();
+                }} 
                 className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 mt-2 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
               >
                 Continue <ArrowRight size={18} className="ml-2" />
@@ -200,7 +262,10 @@ export default function SignupPage() {
                   type="email" 
                   placeholder="you@example.com" 
                   value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
                 />
                 {role === "advisor" && (
@@ -215,7 +280,15 @@ export default function SignupPage() {
               <div className="flex gap-4 mt-2">
                 <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl h-14 font-black uppercase tracking-widest text-[10px]">Back</Button>
                 <Button 
-                  onClick={() => email ? nextStep() : alert("Please enter your email")} 
+                  onClick={() => {
+                    if (!email) {
+                      setFormError("Please enter your email.");
+                      setOtpNotice(null);
+                      return;
+                    }
+                    clearMessages();
+                    nextStep();
+                  }} 
                   className={`flex-[2] font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
                 >
                   Next
@@ -229,7 +302,10 @@ export default function SignupPage() {
               <PasswordField 
                 label="PASSWORD" 
                 value={password} 
-                onChange={setPassword} 
+                onChange={(v) => {
+                  setPassword(v);
+                  clearMessages();
+                }} 
                 className="font-black"
                 variant={role === "student" ? "teal" : "orange"} 
               />
@@ -254,7 +330,10 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="000000" 
                   value={otp} 
-                  onChange={(e) => setOtp(e.target.value)} 
+                  onChange={(e) => {
+                    setOtp(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-4 text-2xl font-black text-center transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md tracking-[0.5em]`} 
                 />
               </div>

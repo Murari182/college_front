@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { getAdvisorById, notifyAdvisorFinalSlot, getBookingById, joinBookingAction, reportNoShowAction, syncBookingStatus, type BookingResponse } from "@/lib/restApi";
 import { Calendar, Video, AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 
 export default function StudentSessionDetailPage() {
@@ -115,13 +116,13 @@ export default function StudentSessionDetailPage() {
       const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        alert("Payment verified! Your session is now confirmed.");
+        toast.success("Payment verified. Your session is now confirmed.");
         window.location.reload(); 
       } else {
-        alert(res.message || "Payment not yet received.");
+        toast.message(res.message || "Payment not yet received.");
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Sync failed.");
+      toast.error(err instanceof Error ? err.message : "Sync failed.");
     } finally {
       setSyncing(false);
     }

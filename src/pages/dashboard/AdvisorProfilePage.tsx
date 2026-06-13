@@ -11,6 +11,7 @@ import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { User, IndianRupee, Star, TrendingUp, Users, Loader, CheckCircle, AlertTriangle, Upload, X, ShieldCheck, Mail, Phone, MapPin, GraduationCap, Clock, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
 
 const ADVISOR_PRICE_OPTIONS = ["99", "149", "199", "249", "299", "399", "499", "599", "999"];
 
@@ -86,9 +87,9 @@ export default function AdvisorProfilePage() {
       setIsEditing(false);
       setFrontFile(null);
       setBackFile(null);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully.");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update profile.");
+      toast.error(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setSaving(false);
     }

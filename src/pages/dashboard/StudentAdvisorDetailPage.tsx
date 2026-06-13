@@ -13,6 +13,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const BOOKINGS_STORAGE_KEY = "collegeconnect_bookings_v1";
 
@@ -88,20 +89,20 @@ export default function StudentAdvisorDetailPage() {
   const handleBookSession = async () => {
     if (!advisor) return;
     if (!selectedSlot.trim()) {
-      alert("Please select one preferred time slot before booking.");
+      toast.error("Please select one preferred time slot before booking.");
       return;
     }
 
     const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY;
     if (!razorpayKey) {
-      alert("Razorpay key is not configured in environment variables (VITE_RAZORPAY_KEY).");
+      toast.error("Razorpay key is not configured in environment variables (VITE_RAZORPAY_KEY).");
       return;
     }
 
     const auth = getFirebaseAuth();
     const user = auth.currentUser;
     if (!user) {
-      alert("Sign in as a student to book a session.");
+      toast.error("Sign in as a student to book a session.");
       return;
     }
 
@@ -177,11 +178,11 @@ export default function StudentAdvisorDetailPage() {
             existing.unshift(booking);
             localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(existing));
 
-            alert(
-              "Payment successful and session booked! The advisor has been sent an email (Resend). You can follow up from your student dashboard.",
+            toast.success(
+              "Payment successful and session booked. The advisor has been emailed. You can follow up from your student dashboard.",
             );
           } catch (e) {
-            alert(e instanceof Error ? e.message : "Payment verification or booking failed.");
+            toast.error(e instanceof Error ? e.message : "Payment verification or booking failed.");
           } finally {
             setBookingBusy(false);
           }
@@ -195,12 +196,12 @@ export default function StudentAdvisorDetailPage() {
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on("payment.failed", (response: any) => {
-        alert(`Payment failed: ${response.error.description}`);
+        toast.error(`Payment failed: ${response.error.description}`);
         setBookingBusy(false);
       });
       rzp.open();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Could not initiate payment process.");
+      toast.error(e instanceof Error ? e.message : "Could not initiate payment process.");
       setBookingBusy(false);
     }
   };

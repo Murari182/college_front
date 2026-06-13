@@ -2,10 +2,12 @@ import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 import { SeoFromRoute } from "./components/SeoFromRoute";
 import type { ReactNode } from "react";
+import { Toaster } from "sonner";
 
 export default function App({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden flex flex-col">
+      <Toaster richColors position="top-center" />
       <SeoFromRoute />
       <a
         href="#main-content"

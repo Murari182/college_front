@@ -18,6 +18,7 @@ export default function Footer() {
           </div>
 
           <nav className="flex flex-wrap gap-x-12 gap-y-4">
+            <Link to="/team" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Team</Link>
             <Link to="/about" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">About</Link>
             <Link to="/privacy" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Privacy</Link>
             <Link to="/terms" className="text-[11px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest">Terms</Link>
