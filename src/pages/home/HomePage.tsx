@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import { useNavigate } from "@tanstack/react-router";
-import { onAuthStateChanged } from "firebase/auth";
+import { getSessionAccessToken } from "@/lib/restApi";
 import HeroSection from "../../sections/HeroSection";
 import HowItWorksSection from "../../sections/HowItWorksSection";
 import WhySection from "../../sections/WhySection";
@@ -14,18 +13,14 @@ export default function HomePage() {
     // should always show the section, even for logged-in users.
     if (window.location.hash) return;
 
-    const auth = getFirebaseAuth();
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && !window.location.hash) {
-        const role = localStorage.getItem("user_role");
-        if (role === "student") {
-          navigate({ to: "/student/dashboard" });
-        } else if (role === "advisor") {
-          navigate({ to: "/advisor/dashboard" });
-        }
+    if (getSessionAccessToken() && !window.location.hash) {
+      const role = localStorage.getItem("user_role");
+      if (role === "student") {
+        navigate({ to: "/student/dashboard" });
+      } else if (role === "advisor") {
+        navigate({ to: "/advisor/dashboard" });
       }
-    });
-    return () => unsubscribe();
+    }
   }, [navigate]);
 
   return (

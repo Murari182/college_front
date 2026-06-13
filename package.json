@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "api": "cd ..\\COLLOEGECONNECTS_Backend && .venv\\Scripts\\python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "api": "cd ..\\collegeconneects-9-backend && .venv\\Scripts\\python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "s3:cors": "cd ..\\COLLOEGECONNECTS_Backend && .venv\\Scripts\\python scripts/apply_s3_cors.py",
     "s3:check": "cd ..\\COLLOEGECONNECTS_Backend && .venv\\Scripts\\python scripts/check_s3_connection.py",
     "sitemap": "node scripts/generate-sitemap.mjs",

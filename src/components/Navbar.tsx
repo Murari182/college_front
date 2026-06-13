@@ -1,9 +1,12 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { getFirebaseAuth } from "@/lib/firebase";
+import {
+  AUTH_SESSION_CHANGED_EVENT,
+  clearStoredAuthSession,
+  getSessionAccessToken,
+} from "@/lib/restApi";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ProfileDropdown } from "./ProfileDropdown";
 
@@ -18,21 +21,31 @@ const navLinks: { label: string; href: string; isHash: boolean }[] = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<{ displayName?: string; photoURL?: string } | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    
-    // Set initial user if already available (prevents guest flicker)
-    if (auth.currentUser) {
-      setAuthUser(auth.currentUser);
-    }
+    const syncAuthUser = () => {
+      const token = getSessionAccessToken();
+      if (!token) {
+        setAuthUser(null);
+        return;
+      }
+      setAuthUser({
+        displayName: localStorage.getItem("user_name") || "User",
+        photoURL: undefined,
+      });
+    };
 
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setAuthUser(u);
-    });
-    return unsub;
+    syncAuthUser();
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthUser);
+    window.addEventListener("storage", syncAuthUser);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncAuthUser);
+      window.removeEventListener("storage", syncAuthUser);
+    };
   }, []);
 
   const isHomePage = location.pathname === "/";
@@ -55,6 +68,9 @@ export default function Navbar() {
         // Navigate to home with the hash — browser will scroll natively
         window.location.href = "/" + href;
       }
+    } else {
+      // Normal path navigation for About, College Predictor, etc.
+      navigate({ to: href });
     }
   };
 
@@ -95,12 +111,18 @@ export default function Navbar() {
         {/* Auth Buttons */}
         <div className="hidden lg:flex items-center gap-8">
           {authUser ? (
-            <ProfileDropdown 
-              role={userRole} 
-              userName={authUser.displayName || undefined} 
-              avatarUrl={authUser.photoURL || undefined}
-            />
-          ) : (
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end text-right">
+                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Logged in as</span>
+                <span className="text-sm font-black text-slate-900 leading-none">{authUser.displayName || "User"}</span>
+              </div>
+              <ProfileDropdown 
+                role={userRole} 
+                userName={authUser.displayName || undefined} 
+                avatarUrl={authUser.photoURL || undefined}
+              />
+            </div>
+          ) : !isDashboard ? (
             <>
               <Link to="/auth/signin" className="text-[11px] font-black text-slate-400 hover:text-slate-900 tracking-[0.15em] uppercase">
                 SIGN IN
@@ -109,7 +131,7 @@ export default function Navbar() {
                 SIGN UP
               </Link>
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Mobile Toggle */}
@@ -122,30 +144,56 @@ export default function Navbar() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="lg:hidden absolute top-full left-0 right-0 bg-white border-t border-slate-50 shadow-2xl p-8"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="lg:hidden fixed inset-0 z-[100] bg-white p-8 pt-24"
           >
-            <nav className="flex flex-col gap-6 text-center">
+            {/* Close button inside mobile menu for clarity */}
+            <button className="absolute top-6 right-6 p-2 text-slate-900" onClick={() => setMobileOpen(false)}>
+              <X size={28} />
+            </button>
+
+            <nav className="flex flex-col gap-8 text-center h-full justify-center pb-20">
               {navLinks.map(link => (
                 <button 
                   key={link.href}
                   onClick={() => handleNavClick(link.href)}
-                  className="text-[12px] font-black text-slate-400 uppercase tracking-widest"
+                  className="text-lg font-black text-slate-400 focus:text-[#F5A623] active:text-[#F5A623] uppercase tracking-[0.2em]"
                 >
                   {link.label}
                 </button>
               ))}
-              <div className="pt-6 border-t border-slate-50 flex flex-col gap-4">
+              <div className="pt-10 border-t border-slate-50 flex flex-col gap-6">
                 {authUser ? (
-                  <button onClick={() => getFirebaseAuth().signOut()} className="text-red-500 font-bold">Log Out</button>
-                ) : (
+                  <button 
+                    onClick={() => {
+                        clearStoredAuthSession();
+                        setMobileOpen(false);
+                        window.location.href = "/";
+                    }} 
+                    className="text-red-500 font-bold uppercase tracking-widest text-sm"
+                  >
+                    Log Out
+                  </button>
+                ) : !isDashboard ? (
                   <>
-                    <Link to="/auth/signin" className="text-[12px] font-black text-slate-900">SIGN IN</Link>
-                    <Link to="/auth/signup" className="btn-primary py-4">SIGN UP</Link>
+                    <Link 
+                        to="/auth/signin" 
+                        onClick={() => setMobileOpen(false)}
+                        className="text-sm font-black text-slate-900 uppercase tracking-widest"
+                    >
+                        SIGN IN
+                    </Link>
+                    <Link 
+                        to="/auth/signup" 
+                        onClick={() => setMobileOpen(false)}
+                        className="btn-primary py-5 rounded-xl text-sm tracking-widest"
+                    >
+                        SIGN UP
+                    </Link>
                   </>
-                )}
+                ) : null}
               </div>
             </nav>
           </motion.div>

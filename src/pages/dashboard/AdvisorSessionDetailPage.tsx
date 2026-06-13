@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Clock3, XCircle } from "lucide-react";
-import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getMyAdvisorProfile,
   notifyStudentSessionUpdate,
@@ -10,12 +9,15 @@ import {
   reportNoShowAction,
   type AdvisorProfileResponse,
   type BookingResponse,
+  getSessionAccessToken,
 } from "@/lib/restApi";
 import { Button } from "@/components/ui/button";
 import { Video, AlertTriangle, Calendar } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 
 export default function AdvisorSessionDetailPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const { bookingId } = useParams({ from: "/advisor/session/$bookingId" });
   const [booking, setBooking] = useState<BookingResponse | null>(null);
@@ -27,10 +29,9 @@ export default function AdvisorSessionDetailPage() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
-      const u = getFirebaseAuth().currentUser;
-      if (!u) return;
+      const token = getSessionAccessToken();
+      if (!token) return;
       try {
-        const token = await u.getIdToken(true);
         const [prof, data] = await Promise.all([
           getMyAdvisorProfile(token),
           getBookingById(token, bookingId)
@@ -57,28 +58,44 @@ export default function AdvisorSessionDetailPage() {
 
 
   const handleAccept = async () => {
-    // Optionally call backend to accept
-    setStatusMsg("Session accepted.");
+    if (!booking) return;
+    try {
+      const token = getSessionAccessToken();
+      if (!token) return;
+      await notifyStudentSessionUpdate(token, {
+        booking_id: bookingId,
+        action: "accept",
+        student_email: booking.student_email,
+        student_name: booking.student_name,
+        old_slot: booking.selected_slot,
+      });
+      setStatusMsg("Session accepted and confirmed!");
+      setBooking(prev => prev ? { ...prev, status: "confirmed" } : null);
+    } catch (e) {
+      toast.error("Failed to accept session.");
+    }
   };
 
   const handleReject = async () => {
     if (!booking) return;
     setBusy(true);
     try {
-      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+      const token = getSessionAccessToken();
       if (!token) {
         setStatusMsg("Sign in required.");
         return;
       }
       await notifyStudentSessionUpdate(token, {
+        booking_id: bookingId,
         action: "reject",
         student_email: booking.student_email,
         student_name: booking.student_name,
         old_slot: booking.selected_slot,
       });
-      setStatusMsg("Rejected and email sent to student.");
+      setStatusMsg("Session rejected.");
+      setBooking(prev => prev ? { ...prev, status: "cancelled" } : null);
     } catch (e) {
-      setStatusMsg(e instanceof Error ? e.message : "Could not reject session.");
+      toast.error("Failed to reject session.");
     } finally {
       setBusy(false);
     }
@@ -92,21 +109,23 @@ export default function AdvisorSessionDetailPage() {
     }
     setBusy(true);
     try {
-      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+      const token = getSessionAccessToken();
       if (!token) {
         setStatusMsg("Sign in required.");
         return;
       }
       await notifyStudentSessionUpdate(token, {
+        booking_id: bookingId,
         action: "change",
         student_email: booking.student_email,
         student_name: booking.student_name,
         old_slot: booking.selected_slot,
         new_slot: newSlot,
       });
-      setStatusMsg("Preferred time changed and email sent to student.");
+      setStatusMsg(`Proposed new slot: ${newSlot}`);
+      setBooking(prev => prev ? { ...prev, status: "changed", selected_slot: newSlot } : null);
     } catch (e) {
-      setStatusMsg(e instanceof Error ? e.message : "Could not change preferred time.");
+      toast.error("Failed to propose new slot.");
     } finally {
       setBusy(false);
     }
@@ -115,7 +134,7 @@ export default function AdvisorSessionDetailPage() {
   const handleJoin = async () => {
     if (!booking?.meet_link) return;
     try {
-      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+      const token = getSessionAccessToken();
       if (token) await joinBookingAction(token, booking.id);
       window.open(booking.meet_link, "_blank");
     } catch (e) {
@@ -128,7 +147,7 @@ export default function AdvisorSessionDetailPage() {
     if (!booking) return;
     setBusy(true);
     try {
-      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
+      const token = getSessionAccessToken();
       if (!token) return;
       const res = await reportNoShowAction(token, booking.id);
       if (res.ok) {

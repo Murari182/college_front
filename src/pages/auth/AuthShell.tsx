@@ -30,7 +30,7 @@ export function AuthShell({
       />
 
       <div className="max-w-lg mx-auto relative z-10">
-        <div className="relative z-[60] mb-8 flex flex-col items-start gap-3 w-full">
+        <div className="mb-8 flex flex-col items-start gap-3 w-full">
           <button
             type="button"
             onClick={goHome}
