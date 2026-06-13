@@ -1,325 +1,333 @@
-import { useState, useEffect } from "react";
-import { 
-  ArrowLeft, ArrowRight, Star, MapPin, BookOpen, GraduationCap, 
-  Calendar, Clock, ShieldCheck, IndianRupee, Brain, Award, 
-  Languages, Loader, AlertTriangle
-} from "lucide-react";
-import { getAdvisorById, bookAdvisorSession } from "@/lib/restApi";
+import {
+  bookAdvisorSession,
+  getAdvisorById,
+  getMyStudentProfile,
+  createPaymentOrder,
+  verifyPayment,
+  type AdvisorPublicDetail,
+} from "@/lib/restApi";
 import { computeEffectiveStudyYear, formatStudyYearLabel } from "@/lib/advisorStudyYear";
-import { getSessionAccessToken } from "@/lib/restApi";
-import { Link, useParams, useNavigate } from "@tanstack/react-router";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { Link, useParams } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, BookOpen, Star } from "lucide-react";
 import { motion } from "motion/react";
-import { useToast } from "@/components/ui/toast";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+const BOOKINGS_STORAGE_KEY = "collegeconnect_bookings_v1";
+
+type SessionBooking = {
+  id: string;
+  advisorId: string;
+  advisorName: string;
+  studentName: string;
+  studentEmail: string;
+  sessionPrice: string;
+  selectedSlot: string;
+  bookedAt: string;
+  status?: "pending" | "accepted" | "rejected" | "changed";
+};
+
+function formatLanguages(a: AdvisorPublicDetail): string {
+  const langs = a.languages?.length ? a.languages.join(", ") : "";
+  const other = a.language_other?.trim();
+  if (langs && other) return `${langs} (${other})`;
+  return langs || other || " - ";
+}
 
 export default function StudentAdvisorDetailPage() {
-  const toast = useToast();
   const { advisorId } = useParams({ from: "/student/advisor/$advisorId" });
-  const navigate = useNavigate();
-  const [advisor, setAdvisor] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [advisor, setAdvisor] = useState<AdvisorPublicDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const [loading, setLoading] = useState(true);
   const [bookingBusy, setBookingBusy] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState("");
 
   useEffect(() => {
-    async function load() {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const token = getSessionAccessToken();
-        if (!token) throw new Error("No token");
-        
-        // Use advisorId from params
         const data = await getAdvisorById(advisorId);
-        setAdvisor(data);
-      } catch (err: any) {
-        console.error(err);
-        setError("Could not load advisor details.");
+        if (!cancelled) setAdvisor(data);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Could not load advisor.");
+          setAdvisor(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    }
-    load();
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [advisorId]);
 
+  const name = advisor?.name?.trim() || "Advisor";
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 3).toUpperCase() || "?";
+  const college =
+    advisor?.detected_college?.trim() || " - ";
+  const branch = advisor?.branch?.trim() || " - ";
+  const studyYearLabel = formatStudyYearLabel(computeEffectiveStudyYear(advisor ?? {}));
+  const sessionPrice = Number(advisor?.session_price || "0");
+  const slots = advisor?.preferred_timezones?.length
+    ? advisor.preferred_timezones
+    : [];
+  useEffect(() => {
+    setSelectedSlot(slots[0] || "");
+  }, [advisorId, slots.join("|")]);
+
   const handleBookSession = async () => {
-    if (!selectedDate || !selectedSlot) {
-      toast.error("Please select both a date and a time slot.");
+    if (!advisor) return;
+    if (!selectedSlot.trim()) {
+      toast.error("Please select one preferred time slot before booking.");
       return;
     }
+
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY;
+    if (!razorpayKey) {
+      toast.error("Razorpay key is not configured in environment variables (VITE_RAZORPAY_KEY).");
+      return;
+    }
+
+    const auth = getFirebaseAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error("Sign in as a student to book a session.");
+      return;
+    }
+
     setBookingBusy(true);
     try {
-      const token = getSessionAccessToken();
-      if (!token) throw new Error("No auth token");
-      await bookAdvisorSession(token, advisorId, selectedSlot, selectedDate);
-      toast.success("Booking request sent successfully!");
-      navigate({ to: "/student/dashboard" });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to create booking.");
-    } finally {
+      let studentName = user.displayName?.trim() || "";
+      let studentEmail = user.email?.trim() || "";
+      let studentPhone = "";
+
+      const token = await user.getIdToken(true);
+      try {
+        const me = await getMyStudentProfile(token);
+        if (me.name?.trim()) studentName = me.name.trim();
+        if (me.email?.trim()) studentEmail = me.email.trim();
+        if (me.phone?.trim()) studentPhone = me.phone.trim();
+      } catch {
+        // Fallback to Firebase user info if profile fetch fails.
+      }
+
+      const price = Number(advisor.session_price || "0");
+      if (price <= 0) {
+        throw new Error("Invalid session price.");
+      }
+
+      // 1. Create Order on Backend
+      const amountInPaise = Math.round(price * 100);
+      const order = await createPaymentOrder(token, amountInPaise);
+
+      // 2. Open Razorpay Checkout widget
+      const options = {
+        key: razorpayKey,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Collegeconnects",
+        description: `Booking session with ${advisor.name}`,
+        order_id: order.id,
+        prefill: {
+          name: studentName,
+          email: studentEmail,
+          contact: studentPhone,
+        },
+        theme: {
+          color: "#22d3ee", // neon-teal
+        },
+        handler: async (response: any) => {
+          try {
+            setBookingBusy(true);
+            // 3. Verify Payment on Backend
+            await verifyPayment(
+              token,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+            );
+
+            // 4. Finalize Booking
+            await bookAdvisorSession(token, advisor.id, selectedSlot.trim());
+
+            const booking: SessionBooking = {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              advisorId: advisor.id,
+              advisorName: advisor.name?.trim() || "Advisor",
+              studentName: studentName || "Student",
+              studentEmail: studentEmail || "unknown@email",
+              sessionPrice: String(advisor.session_price || ""),
+              selectedSlot: selectedSlot.trim(),
+              bookedAt: new Date().toISOString(),
+              status: "pending",
+            };
+
+            const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
+            const existing: SessionBooking[] = raw ? (JSON.parse(raw) as SessionBooking[]) : [];
+            existing.unshift(booking);
+            localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(existing));
+
+            toast.success(
+              "Payment successful and session booked. The advisor has been emailed. You can follow up from your student dashboard.",
+            );
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Payment verification or booking failed.");
+          } finally {
+            setBookingBusy(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setBookingBusy(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        toast.error(`Payment failed: ${response.error.description}`);
+        setBookingBusy(false);
+      });
+      rzp.open();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not initiate payment process.");
       setBookingBusy(false);
     }
   };
 
-  const name = advisor?.name || "Advisor Profile";
-  const college = advisor?.college_name;
-  const branch = advisor?.branch;
-  const initials = name.split(" ").map((n: any) => n[0]).join("").toUpperCase();
-  
-  const effectiveYear = advisor ? computeEffectiveStudyYear(advisor) : 1;
-  const studyYearLabel = formatStudyYearLabel(effectiveYear);
-
-  const sessionPrice = advisor?.session_price || 0;
-  const slots = Array.isArray(advisor?.preferred_time_slots) ? advisor.preferred_time_slots : [];
-
-  const theme = {
-    from: "from-navy",
-    to: "to-slate-800"
-  };
-
-  const formatLanguages = (adv: any) => {
-    if (!adv.languages) return "";
-    if (Array.isArray(adv.languages)) return adv.languages.join(", ");
-    return adv.languages;
-  };
+  const row = (label: string, value: string) => (
+    <div className="bg-background/50 rounded-xl px-4 py-3 border border-border/50">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-sm text-foreground font-medium whitespace-pre-wrap break-words">
+        {value || " - "}
+      </p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-32">
-      {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-navy/8 to-transparent blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tl from-mango/5 to-transparent blur-3xl" />
-      </div>
-
-      <div className="max-w-3xl mx-auto px-4 pt-8 relative z-10">
-        {/* Back link */}
-        <Link to="/student/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-navy transition-colors mb-8 group">
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Back to Advisors
+    <div className="min-h-screen bg-background pt-20 px-4 sm:px-6 pb-32">
+      <div className="max-w-2xl mx-auto">
+        <Link
+          to="/student/dashboard"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-neon-teal mb-6 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Back to Find Advisors
         </Link>
 
-        {loading && (
-          <div className="flex items-center justify-center py-32">
-            <Loader size={32} className="animate-spin text-navy" />
-          </div>
-        )}
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading advisor...</p>
+        ) : null}
+        {error ? (
+          <p className="text-sm text-amber-500 mb-4">{error}</p>
+        ) : null}
 
-        {error && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
-            <p className="text-red-600 font-bold">{error}</p>
-          </div>
-        )}
-
-        {!loading && advisor && !error && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-
-            {/* === HERO CARD === */}
-            <div className={`bg-gradient-to-br ${theme.from} ${theme.to} rounded-[2.5rem] p-8 sm:p-10 mb-6 relative overflow-hidden shadow-2xl`}>
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-2xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
-
-              <div className="relative z-10 flex items-start gap-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[1.5rem] bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-white text-3xl font-black shadow-xl shrink-0">
+        {!loading && advisor && !error ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-2xl border border-border p-6 sm:p-8"
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-teal to-teal-400 flex items-center justify-center text-xl font-bold text-white shrink-0">
                   {initials}
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                      <h1 className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tight">{name}</h1>
-                      {college && (
-                        <div className="flex items-center gap-1.5 text-white/80 text-sm font-bold mb-1">
-                          <BookOpen size={14} />
-                          <span>{college}</span>
-                        </div>
-                      )}
-                      {branch && (
-                        <div className="flex items-center gap-1.5 text-white/70 text-sm font-medium">
-                          <GraduationCap size={14} />
-                          <span>{branch}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1.5">
-                      <Star size={14} className="text-yellow-300 fill-yellow-300" />
-                      <span className="text-white font-black text-sm">4.8</span>
-                    </div>
+                <div className="min-w-0">
+                  <h1 className="text-2xl font-bold text-foreground truncate">{name}</h1>
+                  <div className="flex items-center gap-2 mt-1 text-neon-teal text-sm">
+                    <BookOpen size={14} className="shrink-0" />
+                    <span className="truncate">{college}</span>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <span className="bg-white/20 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
-                      {studyYearLabel}
-                    </span>
-                    {advisor.college_id_front_key && (
-                      <span className="bg-emerald-400/30 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1">
-                        <ShieldCheck size={10} /> Verified
-                      </span>
-                    )}
-                    {sessionPrice > 0 && (
-                      <span className="bg-white/20 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1">
-                        <IndianRupee size={10} /> ₹{sessionPrice} / session
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">{branch}</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-1 glass rounded-full px-3 py-1 shrink-0">
+                <Star size={14} className="text-neon-orange fill-neon-orange" />
+                <span className="text-sm font-semibold">4.8</span>
               </div>
             </div>
 
-            {/* === BIO === */}
-            {advisor.bio?.trim() && (
-              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 sm:p-8 mb-6 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">About</p>
-                <p className="text-slate-700 font-medium leading-relaxed text-sm sm:text-base">{advisor.bio.trim()}</p>
-              </div>
-            )}
-
-            {/* === STATS GRID === */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-              {advisor.jee_mains_rank?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">JEE Mains Rank</p>
-                  <p className="text-xl font-black text-navy">#{advisor.jee_mains_rank.trim()}</p>
-                </div>
-              )}
-              {advisor.jee_mains_percentile?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Percentile</p>
-                  <p className="text-xl font-black text-emerald-600">{advisor.jee_mains_percentile.trim()}%</p>
-                </div>
-              )}
-              {advisor.jee_advanced_rank?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">JEE Advanced</p>
-                  <p className="text-xl font-black text-violet-600">#{advisor.jee_advanced_rank.trim()}</p>
-                </div>
-              )}
-              {advisor.state?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex items-center gap-3">
-                  <MapPin size={18} className="text-mango shrink-0" />
-                  <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">State</p>
-                    <p className="text-sm font-black text-slate-900">{advisor.state.trim()}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* === SKILLS & ACHIEVEMENTS === */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-              {advisor.skills?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Brain size={16} className="text-navy" />
-                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Skills</p>
-                  </div>
-                  <p className="text-sm text-slate-600 font-medium leading-relaxed">{advisor.skills.trim()}</p>
-                </div>
-              )}
-              {advisor.achievements?.trim() && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Award size={16} className="text-mango" />
-                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Achievements</p>
-                  </div>
-                  <p className="text-sm text-slate-600 font-medium leading-relaxed">{advisor.achievements.trim()}</p>
-                </div>
-              )}
-            </div>
-
-            {/* === BOOKING SECTION === */}
-            <div className="mb-12">
-              <div className="mb-8 p-6 bg-slate-50/50 border border-slate-100 rounded-[2rem]">
-                <div className="flex items-center gap-3 mb-5">
-                  <Calendar size={18} className="text-mango" />
-                  <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 1</p>
-                    <p className="text-sm font-black text-slate-900">Choose Session Date</p>
-                  </div>
-                </div>
-                <input
-                  type="date"
-                  min={new Date().toISOString().split("T")[0]}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 outline-none focus:border-navy transition-all shadow-sm"
-                />
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Bio</p>
+                <p className="text-sm text-foreground font-medium whitespace-pre-wrap">
+                  {advisor.bio?.trim() || " - "}
+                </p>
               </div>
 
-              {slots.length > 0 ? (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3">
-                    <Clock size={18} className="text-navy" />
-                    <div>
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Step 2</p>
-                      <p className="text-sm font-black text-slate-900">Pick Available Time Slot</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {row("gender", advisor.gender?.trim() || "")}
+                {row("state", advisor.state?.trim() || "")}
+                {row("JEE Mains percentile", advisor.jee_mains_percentile?.trim() || "")}
+                {row("JEE Mains rank", advisor.jee_mains_rank?.trim() || "")}
+                {row("JEE Advanced rank", advisor.jee_advanced_rank?.trim() || "")}
+                {row("Current year", studyYearLabel)}
+                {row("Session price", sessionPrice > 0 ? `₹${sessionPrice}` : " - ")}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {row("languages", formatLanguages(advisor))}
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Preferred time slots</p>
+                {slots.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5">
                     {slots.map((slot) => (
-                      <label
+                      <li
                         key={slot}
-                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                          selectedSlot === slot
-                            ? "border-navy bg-navy/5 shadow-md"
-                            : "border-slate-100 hover:border-slate-200 bg-white"
-                        }`}
+                        className="text-sm text-foreground font-medium border border-border/60 rounded-xl px-3 py-2 bg-background/50"
                       >
-                        <input
-                          type="radio"
-                          name="booking-slot"
-                          value={slot}
-                          checked={selectedSlot === slot}
-                          onChange={() => setSelectedSlot(slot)}
-                          className="accent-navy"
-                        />
-                        <div className="flex items-center gap-2">
-                          <Clock size={14} className={selectedSlot === slot ? "text-navy" : "text-slate-400"} />
-                          <span className={`text-sm font-bold ${selectedSlot === slot ? "text-navy" : "text-slate-700"}`}>
-                            {slot}
-                          </span>
-                        </div>
-                      </label>
+                        <label className="inline-flex items-center gap-2 w-full cursor-pointer">
+                          <input
+                            type="radio"
+                            name="booking-slot"
+                            value={slot}
+                            checked={selectedSlot === slot}
+                            onChange={() => setSelectedSlot(slot)}
+                            className="accent-[#22d3ee]"
+                          />
+                          <span>{slot}</span>
+                        </label>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-amber-50 border border-amber-100 rounded-[2rem]">
-                  <AlertTriangle size={32} className="text-amber-500 mx-auto mb-3" />
-                  <p className="text-sm font-bold text-amber-900 uppercase tracking-widest mb-1">No Slots Available</p>
-                  <p className="text-xs text-amber-700 font-medium">This advisor hasn't set their availability yet.</p>
-                </div>
-              )}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground"> - </p>
+                )}
+              </div>
             </div>
-
           </motion.div>
-        )}
+        ) : null}
       </div>
 
-      {/* === STICKY BOOK NOW FOOTER === */}
-      {!loading && advisor && !error && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200 shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.12)] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="max-w-3xl mx-auto flex items-center gap-4">
-            <div className="flex-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Session Fee</p>
-              <p className="text-2xl font-black text-slate-900">
-                {sessionPrice > 0 ? `₹${sessionPrice}` : "Free"}
-                <span className="text-xs font-bold text-slate-400 ml-1">/ 60 min</span>
-              </p>
-            </div>
-            <button
+      {!loading && advisor && !error ? (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="max-w-2xl mx-auto flex gap-3">
+            <Button
               type="button"
+              className="flex-1 bg-neon-orange hover:bg-neon-orange/90 text-black font-semibold rounded-xl h-12 gap-2"
               onClick={handleBookSession}
-              disabled={bookingBusy || slots.length === 0}
-              className="flex items-center gap-2 bg-navy hover:bg-navy/90 text-white font-black rounded-2xl h-14 px-8 transition-all shadow-xl shadow-navy/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              disabled={bookingBusy}
             >
-              {bookingBusy ? (
-                <Loader size={18} className="animate-spin" />
-              ) : (
-                <>Book Session <ArrowRight size={18} /></>
-              )}
-            </button>
+              {bookingBusy ? "Booking..." : "Book session"}
+              <ArrowRight size={18} />
+            </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

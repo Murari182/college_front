@@ -1,20 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/ui/password-field";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { formatFirebaseAuthError } from "@/lib/firebaseAuthErrors";
 import {
+  ApiError,
+  registerAdvisor,
+  registerStudent,
   requestSignupOtp,
   verifySignupOtp,
-  registerStudent,
-  registerAdvisor,
 } from "@/lib/restApi";
+import { FirebaseError } from "firebase/app";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { CheckCircle, Loader, Mail, UserPlus, GraduationCap, ShieldCheck, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthShell } from "./AuthShell";
 import { motion, AnimatePresence } from "motion/react";
-import { useToast } from "@/components/ui/toast";
 
 export default function SignupPage() {
-  const toast = useToast();
   const navigate = useNavigate();
   const [role, setRole] = useState<"student" | "advisor">("student");
   const [step, setStep] = useState(1);
@@ -26,17 +29,13 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const [signupToken, setSignupToken] = useState<string | null>(null);
-  const [sessionPrice, setSessionPrice] = useState("199");
-  const [preferredTimings, setPreferredTimings] = useState<string[]>([]);
-  const [newTiming, setNewTiming] = useState("10 AM - 11 AM");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
-  const TIMING_SLOTS = [
-    "8 AM - 9 AM", "9 AM - 10 AM", "10 AM - 11 AM", "11 AM - 12 PM",
-    "12 PM - 1 PM", "1 PM - 2 PM", "2 PM - 3 PM", "3 PM - 4 PM",
-    "4 PM - 5 PM", "5 PM - 6 PM", "6 PM - 7 PM", "7 PM - 8 PM",
-    "8 PM - 9 PM", "9 PM - 10 PM", "10 PM - 11 PM"
-  ];
+  function clearMessages() {
+    setFormError(null);
+    setOtpNotice(null);
+  }
 
   // Dynamic Theme Colors - Professional Academic Palette (Navy & Mango)
   const activeColor = role === "student" ? "bg-[#1E3A8A]" : "bg-[#F5A623]";
@@ -63,18 +62,26 @@ export default function SignupPage() {
 
   const handleSendOtp = async (isResend = false) => {
     if (role === "advisor" && isPersonalEmail(email)) {
-      toast.error("Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.");
+      setFormError(
+        "Please provide your College ID email (e.g., yourname@iit.ac.in) instead of a personal ID.",
+      );
+      setOtpNotice(null);
       return;
     }
     setBusy(true);
+    clearMessages();
     try {
       await requestSignupOtp(role, email.trim());
       setOtpSent(true);
       if (!isResend) setStep(4);
       setResendTimer(60); // Start 60s cooldown
-      toast.success(isResend ? "New verification code sent!" : "Verification code sent to your email.");
+      setOtpNotice(
+        isResend ? "New verification code sent!" : "Verification code sent to your email.",
+      );
+      setFormError(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send OTP.");
+      setOtpNotice(null);
+      setFormError(e instanceof Error ? e.message : "Failed to send OTP.");
     } finally {
       setBusy(false);
     }
@@ -82,64 +89,50 @@ export default function SignupPage() {
 
   const handleVerifyAndSignup = async () => {
     if (!otp) {
-      toast.error("Please enter the verification code.");
+      setFormError("Please enter the verification code.");
+      setOtpNotice(null);
       return;
     }
     setBusy(true);
+    clearMessages();
     try {
-      const verified = await verifySignupOtp(role, email.trim(), otp.trim(), password);
-      const token = verified.access_token;
-      setSignupToken(token);
-      localStorage.setItem("user_name", name.trim() || email.trim().split("@")[0]);
-      localStorage.setItem("user_email", email.trim().toLowerCase());
-      if (role === "advisor") {
-        setStep(5);
-        return;
-      }
-      const payload = {
-        name,
-        email: email.trim(),
-        referral_code: referralCode.trim() || undefined
-      };
+      await verifySignupOtp(role, email.trim(), otp.trim(), password);
+      const auth = getFirebaseAuth();
+      const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCred.user;
+      await updateProfile(user, { displayName: name });
+      const token = await user.getIdToken();
+
+      const payload = role === "student" 
+        ? { 
+            name, 
+            email: email.trim(),
+            referral_code: referralCode.trim() || undefined 
+          }
+        : {
+            name,
+            collegeEmail: email.trim(),
+            referral_code: referralCode.trim() || undefined
+          };
+
       if (role === "student") {
         await registerStudent(token, payload);
         localStorage.setItem("user_role", "student");
         navigate({ to: "/student/dashboard" });
-      }
-    } catch (e) {
-      if (e && typeof e === "object" && "message" in e && typeof (e as { message: string }).message === "string" && (e as { message: string }).message.includes("409")) {
-        toast.error("This email is already registered. Please Sign In instead.");
       } else {
-        toast.error(e instanceof Error ? e.message : "Signup failed.");
+        await registerAdvisor(token, payload);
+        localStorage.setItem("user_role", "advisor");
+        navigate({ to: "/advisor/dashboard" });
       }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleFinishAdvisorProfile = async () => {
-    setBusy(true);
-    try {
-      const token = signupToken;
-      if (!token) {
-        toast.error("Session expired. Please verify OTP again.");
-        setStep(4);
-        return;
-      }
-
-      const payload = {
-        name,
-        collegeEmail: email.trim(),
-        referral_code: referralCode.trim() || undefined,
-        session_price: sessionPrice,
-        preferred_timezones: preferredTimings
-      };
-
-      await registerAdvisor(token, payload);
-      localStorage.setItem("user_role", "advisor");
-      navigate({ to: "/advisor/dashboard" });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to finish advisor profile.");
+      if (e instanceof FirebaseError) {
+        setFormError(formatFirebaseAuthError(e));
+      } else if (e instanceof ApiError && e.status === 409) {
+        setFormError("This email is already registered. Please Sign In instead.");
+      } else {
+        setFormError(e instanceof Error ? e.message : "Signup failed.");
+      }
+      setOtpNotice(null);
     } finally {
       setBusy(false);
     }
@@ -152,11 +145,26 @@ export default function SignupPage() {
         step === 1 ? (role === "advisor" ? "Sign up using college email only. Basic info first." : "Start with your name and referral code.") :
         step === 2 ? (role === "advisor" ? "Enter your official college email address." : "Enter your email address.") :
         step === 3 ? "Secure your account with a password." :
-        step === 4 ? "Enter the 6-digit code sent to " + email :
-        "Set your session fee and availability."
+        "Enter the 6-digit code sent to " + email
       }
     >
       <div className="flex flex-col gap-8">
+        {formError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm"
+          >
+            {formError}
+          </div>
+        ) : null}
+        {otpNotice ? (
+          <div
+            role="status"
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm"
+          >
+            {otpNotice}
+          </div>
+        ) : null}
         {step === 1 && (
           <div className="relative flex p-1.5 bg-slate-50 border border-slate-100 rounded-2xl gap-1">
             {/* Sliding Pill Background */}
@@ -173,14 +181,22 @@ export default function SignupPage() {
             />
 
             <button 
-              onClick={() => setRole("student")} 
+              type="button"
+              onClick={() => {
+                setRole("student");
+                clearMessages();
+              }} 
               className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "student" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
             >
               <GraduationCap size={16} strokeWidth={2.5} />
               I'm a Student
             </button>
             <button 
-              onClick={() => setRole("advisor")} 
+              type="button"
+              onClick={() => {
+                setRole("advisor");
+                clearMessages();
+              }} 
               className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-black uppercase tracking-[0.1em] transition-colors duration-300 ${role === "advisor" ? "text-white" : "text-slate-400 hover:text-slate-600"}`}
             >
               <ShieldCheck size={16} strokeWidth={2.5} />
@@ -198,7 +214,10 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="John Doe" 
                   value={name} 
-                  onChange={(e) => setName(e.target.value)} 
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
                 />
               </div>
@@ -211,12 +230,23 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="REF123" 
                   value={referralCode} 
-                  onChange={(e) => setReferralCode(e.target.value)} 
+                  onChange={(e) => {
+                    setReferralCode(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md uppercase tracking-wider`} 
                 />
               </div>
               <Button 
-                onClick={() => name ? nextStep() : toast.error("Please enter your name")} 
+                onClick={() => {
+                  if (!name) {
+                    setFormError("Please enter your name.");
+                    setOtpNotice(null);
+                    return;
+                  }
+                  clearMessages();
+                  nextStep();
+                }} 
                 className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 mt-2 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
               >
                 Continue <ArrowRight size={18} className="ml-2" />
@@ -232,7 +262,10 @@ export default function SignupPage() {
                   type="email" 
                   placeholder="you@example.com" 
                   value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
                 />
                 {role === "advisor" && (
@@ -247,7 +280,15 @@ export default function SignupPage() {
               <div className="flex gap-4 mt-2">
                 <Button variant="outline" onClick={prevStep} className="flex-1 rounded-xl h-14 font-black uppercase tracking-widest text-[10px]">Back</Button>
                 <Button 
-                  onClick={() => email ? nextStep() : toast.error("Please enter your email")} 
+                  onClick={() => {
+                    if (!email) {
+                      setFormError("Please enter your email.");
+                      setOtpNotice(null);
+                      return;
+                    }
+                    clearMessages();
+                    nextStep();
+                  }} 
                   className={`flex-[2] font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
                 >
                   Next
@@ -261,7 +302,10 @@ export default function SignupPage() {
               <PasswordField 
                 label="PASSWORD" 
                 value={password} 
-                onChange={setPassword} 
+                onChange={(v) => {
+                  setPassword(v);
+                  clearMessages();
+                }} 
                 className="font-black"
                 variant={role === "student" ? "teal" : "orange"} 
               />
@@ -286,7 +330,10 @@ export default function SignupPage() {
                   type="text" 
                   placeholder="000000" 
                   value={otp} 
-                  onChange={(e) => setOtp(e.target.value)} 
+                  onChange={(e) => {
+                    setOtp(e.target.value);
+                    clearMessages();
+                  }} 
                   className={`bg-white border border-slate-100 rounded-xl px-5 py-4 text-2xl font-black text-center transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md tracking-[0.5em]`} 
                 />
               </div>
@@ -308,66 +355,6 @@ export default function SignupPage() {
                 </button>
                 <button onClick={() => setStep(2)} className="text-[9px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest">Wrong email? Change it</button>
               </div>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Session Price (₹)</label>
-                <select 
-                  value={sessionPrice} 
-                  onChange={(e) => setSessionPrice(e.target.value)}
-                  className={`bg-white border border-slate-100 rounded-xl px-5 py-3 text-sm transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`}
-                >
-                  <option value="99">₹99 / Session</option>
-                  <option value="199">₹199 / Session</option>
-                  <option value="299">₹299 / Session</option>
-                  <option value="399">₹399 / Session</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Add Preferred Slots</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {preferredTimings.map((t, i) => (
-                    <div key={i} className="bg-navy text-white px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-2">
-                      {t}
-                      <button onClick={() => setPreferredTimings(p => p.filter((_, idx) => idx !== i))} className="hover:text-red-400">×</button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <select 
-                    value={newTiming}
-                    onChange={(e) => setNewTiming(e.target.value)}
-                    className={`flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs transition-all outline-none shadow-sm ${accentBorder} focus:shadow-md`} 
-                  >
-                    {TIMING_SLOTS.map(slot => (
-                      <option key={slot} value={slot}>{slot}</option>
-                    ))}
-                  </select>
-                  <button 
-                    onClick={() => {
-                      if (newTiming.trim()) {
-                        setPreferredTimings(p => [...p, newTiming.trim()]);
-                        setNewTiming("");
-                      }
-                    }}
-                    className={`px-4 rounded-xl text-[10px] font-black text-white ${activeColor}`}
-                  >
-                    ADD
-                  </button>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleFinishAdvisorProfile} 
-                disabled={busy} 
-                className={`w-full font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] ${activeColor} text-white shadow-lg shadow-black/5`}
-              >
-                {busy ? <Loader size={18} className="animate-spin" /> : "Complete Profile"}
-              </Button>
             </div>
           )}
 

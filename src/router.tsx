@@ -19,6 +19,7 @@ const PrivacyPage = lazy(() => import("./pages/footer/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/footer/TermsPage"));
 
 const CollegePredictorPage = lazy(() => import("./pages/home/CollegePredictorPage"));
+const TeamPage = lazy(() => import("./pages/home/TeamPage"));
 const StudentDashboard = lazy(() => import("./pages/dashboard/StudentDashboard"));
 const StudentAdvisorDetailPage = lazy(() => import("./pages/dashboard/StudentAdvisorDetailPage"));
 const StudentSessionDetailPage = lazy(() => import("./pages/dashboard/StudentSessionDetailPage"));
@@ -55,6 +56,12 @@ const collegePredictorRoute = createRoute({
   component: CollegePredictorPage,
 });
 
+const teamRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/team",
+  component: TeamPage,
+});
+
 const studentDashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: "/student/dashboard", component: StudentDashboard });
 const studentAdvisorDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -78,6 +85,7 @@ const routeTree = rootRoute.addChildren([
   signupRoute,
   signinRoute,
   collegePredictorRoute,
+  teamRoute,
   studentDashboardRoute,
   studentAdvisorDetailRoute,
   studentSessionDetailRoute,

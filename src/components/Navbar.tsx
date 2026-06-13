@@ -15,6 +15,7 @@ const navLinks: { label: string; href: string; isHash: boolean }[] = [
   { label: "HOW IT WORKS", href: "#how-it-works", isHash: true },
   { label: "WHY US", href: "#why-us", isHash: true },
   { label: "COLLEGE PREDICTOR", href: "/college-predictor", isHash: false },
+  { label: "TEAM", href: "/team", isHash: false },
   { label: "ABOUT", href: "/about", isHash: false },
 ];
 

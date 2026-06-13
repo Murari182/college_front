@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getFirebaseAuth } from "@/lib/firebase";
 import {
   getAdvisorsDirectory,
   getMyStudentProfile,
@@ -7,26 +8,23 @@ import {
   type StudentProfileResponse,
   type BookingResponse,
   syncBookingStatus,
-  getSessionAccessToken,
 } from "@/lib/restApi";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin, Trophy } from "lucide-react";
+import { Calendar, Search, ChevronDown, Star, ArrowRight, Gift, Video, RefreshCw, IndianRupee, Monitor, Loader, CheckCircle2, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import StudentReferEarnPage from "./StudentReferEarnPage";
 import { BrandLogo } from "@/components/BrandLogo";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { fadeInUp, staggerContainer, viewportConfig } from "@/lib/animations";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
-import { MiniCalendar } from "@/components/MiniCalendar";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "advisors", label: "Find Advisors", icon: Search },
   { id: "sessions", label: "My Sessions", icon: Calendar },
-  { id: "predictor", label: "College Predictor", icon: Trophy },
   { id: "refer", label: "Refer & Earn", icon: Gift },
 ];
-const ADVISORS_PER_PAGE = 50;
 
 const ADVISOR_COLORS = [
   { bg: "bg-navy-light", text: "text-navy", border: "border-navy/10", gradient: "from-blue-500/10 to-navy/10" },
@@ -65,7 +63,7 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
              <h4 className="text-xl font-black text-slate-900 group-hover:text-navy transition-colors truncate">
               {advisor.name}
             </h4>
-            {Number(advisor.session_price) > 150 && (
+            {advisor.session_price > 150 && (
               <span className="bg-mango/10 text-mango-dark text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Top Rated</span>
             )}
           </div>
@@ -79,7 +77,7 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
 
       <div className="flex-1 mb-8">
         <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed font-bold italic opacity-80 group-hover:opacity-100 transition-opacity">
-          "{(advisor.bio?.length ?? 0) > 10 ? advisor.bio : dummyBio}"
+          "{advisor.bio?.length > 10 ? advisor.bio : dummyBio}"
         </p>
       </div>
 
@@ -97,21 +95,21 @@ function AdvisorCard({ advisor, onClick }: { advisor: AdvisorDirectoryItem; onCl
 }
 
 function BookingCardContent({ booking }: { booking: BookingResponse }) {
-  const toast = useToast();
   const [syncing, setSyncing] = useState(false);
 
   const handleSyncStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const token = getSessionAccessToken();
-    if (!token) return;
+    const u = getFirebaseAuth().currentUser;
+    if (!u) return;
     setSyncing(true);
     try {
+      const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        toast.success("Payment verified!");
+        toast.success("Payment verified.");
         window.location.reload(); 
       } else {
-        toast.info(res.message || "Payment pending.");
+        toast.message(res.message || "Payment pending.");
       }
     } catch (err) {
       toast.error("Sync failed.");
@@ -134,13 +132,9 @@ function BookingCardContent({ booking }: { booking: BookingResponse }) {
           <span className={`stat-badge ${
             booking.status === "confirmed" || booking.status === "finalized"
               ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-              : booking.status === "cancelled"
-              ? "bg-red-50 text-red-700 border-red-100"
-              : booking.status === "changed"
-              ? "bg-violet-50 text-violet-700 border-violet-100"
               : "bg-orange-50 text-orange-700 border-orange-100"
           }`}>
-            {booking.status?.toUpperCase() || "PENDING"}
+            {booking.status || "pending"}
           </span>
           {booking.status === "pending" && (
             <button onClick={handleSyncStatus} disabled={syncing} className="text-[10px] text-orange-600 font-bold hover:underline flex items-center gap-1 transition-all">
@@ -174,10 +168,9 @@ function BookingCardContent({ booking }: { booking: BookingResponse }) {
 }
 
 export default function StudentDashboard() {
-  const toast = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("advisors");
-  const [authUser, setAuthUser] = useState<{ displayName?: string; photoURL?: string } | null>(null);
+  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
   const [student, setStudent] = useState<StudentProfileResponse | null>(null);
   const [advisors, setAdvisors] = useState<AdvisorDirectoryItem[]>([]);
   const [advisorsLoading, setAdvisorsLoading] = useState(true);
@@ -185,43 +178,24 @@ export default function StudentDashboard() {
   const [selectedCollege, setSelectedCollege] = useState("All Colleges");
   const [selectedBranch, setSelectedBranch] = useState("All Branches");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentAdvisorPage, setCurrentAdvisorPage] = useState(1);
 
   useEffect(() => {
     document.title = "Student Dashboard | CollegeConnects";
-    const token = getSessionAccessToken();
-    if (!token) {
-      navigate({ to: "/auth/signin" });
-      return;
-    }
-    setAuthUser({ displayName: localStorage.getItem("user_name") || "Student" });
-    void loadProfile(token);
+    const auth = getFirebaseAuth();
+    return onAuthStateChanged(auth, u => {
+      setAuthUser(u);
+      if (u) {
+        loadProfile(u);
+      }
+    });
   }, []);
 
-  const loadProfile = async (token: string) => {
+  const loadProfile = async (u: FirebaseUser) => {
     try {
-      const storedRole = localStorage.getItem("user_role");
-      if (storedRole && storedRole !== "student") {
-        navigate({ to: "/advisor/dashboard" });
-        return;
-      }
-
+      const token = await u.getIdToken(true);
       const profile = await getMyStudentProfile(token);
       setStudent(profile);
-      localStorage.setItem("user_role", "student");
-    } catch (e: any) {
-      console.error("StudentDashboard profile load failed:", e);
-      const msg = e.message || "Access Denied";
-      if (e.status === 403 || (msg && msg.includes("403"))) {
-        toast.error(msg);
-        if (!msg.includes("Dual-role")) {
-           navigate({ to: "/advisor/dashboard" });
-        }
-      } else {
-        // Not found or other error
-        navigate({ to: "/auth/signup" });
-      }
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -240,11 +214,10 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "sessions") return;
+    if (activeTab !== "sessions" || !authUser) return;
     const loadBookings = async () => {
       try {
-        const token = getSessionAccessToken();
-        if (!token) return;
+        const token = await authUser.getIdToken(true);
         const list = await getMyBookings(token);
         setSessionBookings(list);
       } catch (e) {
@@ -259,32 +232,13 @@ export default function StudentDashboard() {
   const dynamicBranches = ["All Branches", ...new Set(advisors.map(a => a.branch).filter(Boolean).sort() as string[])];
 
   const filteredAdvisors = advisors.filter((a) => {
-    const name = String(a.name ?? "").toLowerCase();
-    const college = String(a.college ?? a.detected_college ?? "").toLowerCase();
-    const branch = String(a.branch ?? "").toLowerCase();
-    const query = searchQuery.toLowerCase();
-
-    const collegeMatch = selectedCollege === "All Colleges" || college.includes(selectedCollege.toLowerCase());
-    const branchMatch = selectedBranch === "All Branches" || branch.includes(selectedBranch.toLowerCase());
-    const searchMatch = query === "" || name.includes(query) || college.includes(query) || branch.includes(query);
-
+    const name = String(a.name ?? "");
+    const college = String(a.college ?? "");
+    const collegeMatch = selectedCollege === "All Colleges" || college === selectedCollege;
+    const branchMatch = selectedBranch === "All Branches" || String(a.branch ?? "") === selectedBranch;
+    const searchMatch = name.toLowerCase().includes(searchQuery.toLowerCase()) || college.toLowerCase().includes(searchQuery.toLowerCase());
     return collegeMatch && branchMatch && searchMatch;
   });
-  const totalAdvisorPages = Math.max(1, Math.ceil(filteredAdvisors.length / ADVISORS_PER_PAGE));
-  const paginatedAdvisors = filteredAdvisors.slice(
-    (currentAdvisorPage - 1) * ADVISORS_PER_PAGE,
-    currentAdvisorPage * ADVISORS_PER_PAGE,
-  );
-
-  useEffect(() => {
-    setCurrentAdvisorPage(1);
-  }, [searchQuery, selectedCollege, selectedBranch]);
-
-  useEffect(() => {
-    if (currentAdvisorPage > totalAdvisorPages) {
-      setCurrentAdvisorPage(totalAdvisorPages);
-    }
-  }, [currentAdvisorPage, totalAdvisorPages]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-navy/10 selection:text-navy relative overflow-hidden">
@@ -397,51 +351,26 @@ export default function StudentDashboard() {
                   <p className="text-slate-500 font-medium">Try adjusting your filters or search terms.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <motion.div variants={staggerContainer()} initial="initial" animate="animate" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginatedAdvisors.map((advisor) => (
-                      <AdvisorCard key={advisor.id} advisor={advisor} onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })} />
-                    ))}
-                  </motion.div>
-                  {totalAdvisorPages > 1 && (
-                    <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                      {Array.from({ length: totalAdvisorPages }, (_, index) => {
-                        const page = index + 1;
-                        const isActive = page === currentAdvisorPage;
-                        return (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentAdvisorPage(page)}
-                            className={`min-w-10 h-10 px-3 rounded-xl border text-sm font-black transition-all ${
-                              isActive
-                                ? "bg-navy text-white border-navy shadow-lg shadow-navy/20"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-navy/30 hover:text-navy"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <motion.div variants={staggerContainer()} initial="initial" animate="animate" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAdvisors.map((advisor) => (
+                    <AdvisorCard key={advisor.id} advisor={advisor} onClick={() => navigate({ to: `/student/advisor/${advisor.id}` })} />
+                  ))}
+                </motion.div>
               )}
             </motion.div>
           )}
 
           {activeTab === "sessions" && (
             <motion.div key="sessions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                 <div className="card-solid p-6 md:col-span-1 lg:col-span-2 bg-white border-l-4 border-l-navy flex flex-col justify-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="card-solid p-6 md:col-span-1 bg-white border-l-4 border-l-navy">
                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Active Bookings</p>
                     <p className="text-3xl font-black text-slate-900">{sessionBookings.length}</p>
                  </div>
-                 <div className="lg:col-span-1">
-                    <MiniCalendar sessions={sessionBookings.map(b => ({
-                      date: b.scheduled_time ? b.scheduled_time.split('T')[0] : "",
-                      title: b.advisor_name,
-                      status: b.status
-                    }))} />
+                 <div className="md:col-span-2 flex items-center justify-end">
+                    <button className="btn-secondary h-fit py-2.5 px-6 text-xs flex items-center gap-2">
+                       <Monitor size={14} /> DOWNLOAD HISTORY
+                    </button>
                  </div>
               </div>
 
@@ -461,30 +390,6 @@ export default function StudentDashboard() {
                   ))}
                 </div>
               )}
-            </motion.div>
-          )}
-
-          {activeTab === "predictor" && (
-            <motion.div key="predictor" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
-               <div className="card-solid p-8 text-center bg-white border-l-4 border-l-navy relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-navy/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-                  
-                  <div className="relative z-10">
-                    <div className="w-20 h-20 bg-navy/10 rounded-3xl flex items-center justify-center text-navy mx-auto mb-6 shadow-sm">
-                      <Trophy size={40} strokeWidth={2.5} />
-                    </div>
-                    <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">College Predictor 2025</h3>
-                    <p className="text-slate-500 font-bold max-w-lg mx-auto mb-8 leading-relaxed">
-                      Estimate your chances in IITs, NITs, and IIITs based on your JEE Main rank, category, and gender pool.
-                    </p>
-                    <button 
-                      onClick={() => navigate({ to: "/college-predictor" })}
-                      className="btn-primary py-4 px-10 text-sm font-black flex items-center gap-3 mx-auto shadow-xl shadow-navy/20 hover:scale-105 active:scale-95 transition-all"
-                    >
-                      OPEN PREDICTOR <ArrowRight size={20} strokeWidth={3} />
-                    </button>
-                  </div>
-               </div>
             </motion.div>
           )}
 

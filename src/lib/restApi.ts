@@ -1,18 +1,38 @@
 // Use environment variable for production, or fallback to empty (Vite proxy) for local development.
 const API_URL = import.meta.env.VITE_REST_API_URL || "";
-const BACKEND_ACCESS_TOKEN_KEY = "backend_access_token";
-const SESSION_KEYS = [
-  BACKEND_ACCESS_TOKEN_KEY,
-  "user_role",
-  "user_name",
-  "user_email",
-] as const;
-export const AUTH_SESSION_CHANGED_EVENT = "collegeconnects-auth-session-changed";
+
+/** Thrown when the REST API returns a non-OK status; includes HTTP status for UI logic. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 
 function url(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   const base = API_URL.replace(/\/$/, "");
   return base ? `${base}${p}` : p;
+}
+
+/** Unwrap `{ success, message, data }` when present; otherwise pass through legacy JSON. */
+export function unwrapSuccessIfEnvelope<T>(raw: unknown): T {
+  if (raw && typeof raw === "object" && "success" in raw) {
+    const env = raw as { success?: boolean; message?: string; data?: unknown };
+    if (env.success === false) {
+      throw new Error(env.message || "Request failed");
+    }
+    if (env.success === true && "data" in env && env.data !== undefined) {
+      return env.data as T;
+    }
+    if (env.success === true) {
+      return {} as T;
+    }
+  }
+  return raw as T;
 }
 
 async function parseJsonOrThrow<T>(res: Response): Promise<T> {
@@ -29,12 +49,19 @@ async function parseJsonOrThrow<T>(res: Response): Promise<T> {
       `API returned non-JSON response for ${endpoint}. Configure VITE_REST_API_URL to your backend URL.`,
     );
   }
-  return (await res.json()) as T;
+  const raw = await res.json();
+  return unwrapSuccessIfEnvelope<T>(raw);
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {
   try {
-    const data = (await res.json()) as { detail?: unknown };
+    const data = (await res.json()) as {
+      message?: unknown;
+      detail?: unknown;
+    };
+    if (typeof data.message === "string" && data.message.length > 0) {
+      return data.message;
+    }
     const d = data.detail;
     if (typeof d === "string") return d;
     if (Array.isArray(d)) {
@@ -52,39 +79,6 @@ async function parseErrorMessage(res: Response): Promise<string> {
   return res.statusText || `Request failed (${res.status})`;
 }
 
-export function getSessionAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  const token = localStorage.getItem(BACKEND_ACCESS_TOKEN_KEY);
-  return token && token.trim() ? token.trim() : null;
-}
-
-export function setSessionAccessToken(token: string): void {
-  if (typeof window === "undefined") return;
-  const cleaned = token.trim();
-  if (!cleaned) return;
-  localStorage.setItem(BACKEND_ACCESS_TOKEN_KEY, cleaned);
-  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
-}
-
-export function clearStoredBackendAccessToken(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(BACKEND_ACCESS_TOKEN_KEY);
-  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
-}
-
-export function clearStoredAuthSession(): void {
-  if (typeof window === "undefined") return;
-  for (const key of SESSION_KEYS) {
-    localStorage.removeItem(key);
-  }
-  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
-}
-
-function bearerToken(firebaseOrBackendToken: string): string {
-  const token = getSessionAccessToken() || firebaseOrBackendToken;
-  return `Bearer ${token}`;
-}
-
 /** Response from POST /api/students or /api/advisors after MongoDB insert. */
 export type RegisteredProfileResponse = {
   id: string;
@@ -98,21 +92,11 @@ export type AdvisorProfileResponse = {
   id: string;
   name: string;
   college_email: string;
-  personal_email?: string;
-  gender?: string;
   detected_college: string;
   branch: string;
   phone?: string;
   state?: string;
-  upi_id?: string;
-  date_of_birth?: string;
-  roll_number?: string;
-  jee_mains_percentile?: string;
-  jee_mains_rank?: string;
-  jee_advanced_rank?: string;
   bio?: string;
-  skills?: string;
-  achievements?: string;
   languages: string[];
   preferred_timezones?: string[];
   session_price: string;
@@ -123,7 +107,6 @@ export type AdvisorProfileResponse = {
   total_earnings?: number;
   total_sessions?: number;
   total_students?: number;
-  profile_picture?: string;
   college_id_front_key?: string;
   college_id_back_key?: string;
 };
@@ -153,18 +136,14 @@ export type StudentProfileResponse = {
   jee_advanced_rank?: string;
   languages?: string[];
   language_other?: string;
-  current_study_year?: number;
-  jee_prep_status?: string;
   total_spent?: number;
   total_sessions?: number;
-  created_at?: string;
 };
 
 export type AdvisorDirectoryItem = {
   id: string;
   name: string;
-  college?: string;
-  detected_college?: string;
+  college: string;
   branch: string;
   session_price: string;
   current_study_year?: number;
@@ -174,8 +153,6 @@ export type AdvisorDirectoryItem = {
   bio?: string;
   languages: string[];
   preferred_timezones?: string[];
-  jee_mains_rank?: string;
-  college_id_front_key?: string;
 };
 
 /** Public advisor profile from GET /api/advisors/id/{id} (Mongo fields, snake_case after normalize). */
@@ -211,7 +188,7 @@ export async function requestPasswordResetOtp(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role, email }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean; expires_in_seconds: number }>(res);
 }
 
@@ -226,7 +203,7 @@ export async function confirmPasswordResetOtp(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role, email, otp, new_password: newPassword }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
@@ -240,7 +217,7 @@ export async function requestSignupOtp(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role, email }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean; expires_in_seconds: number }>(res);
 }
 
@@ -250,44 +227,14 @@ export async function verifySignupOtp(
   email: string,
   otp: string,
   password: string,
-): Promise<{ ok: boolean; access_token: string; token_type: string; expires_in: number }> {
+): Promise<{ ok: boolean }> {
   const res = await fetch(url("/api/auth/signup-otp/verify"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role, email, otp, password }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
-  const data = await parseJsonOrThrow<{
-    ok: boolean;
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-  }>(res);
-  setSessionAccessToken(data.access_token);
-  return data;
-}
-
-export async function loginWithPassword(
-  role: PasswordResetRole,
-  email: string,
-  password: string,
-): Promise<{ access_token: string; token_type: string; expires_in: number; user?: { name?: string } }> {
-  const res = await fetch(url("/api/auth/login"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role, email, password }),
-  });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
-  const data = await parseJsonOrThrow<{
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-    user?: { name?: string };
-  }>(res);
-  setSessionAccessToken(data.access_token);
-  return data;
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
+  return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
 export type BookingResponse = {
@@ -331,12 +278,12 @@ export async function registerStudent(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<RegisteredProfileResponse>(res);
 }
@@ -349,12 +296,12 @@ export async function registerAdvisor(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<RegisteredProfileResponse>(res);
 }
@@ -365,11 +312,11 @@ export async function getMyAdvisorProfile(
   const res = await fetch(url("/api/advisors/me"), {
     method: "GET",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<AdvisorProfileResponse>(res);
 }
@@ -382,12 +329,12 @@ export async function updateMyAdvisorProfile(
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<AdvisorProfileResponse>(res);
 }
@@ -398,11 +345,11 @@ export async function getMyStudentProfile(
   const res = await fetch(url("/api/students/me"), {
     method: "GET",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<StudentProfileResponse>(res);
 }
@@ -415,12 +362,12 @@ export async function updateMyStudentProfile(
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<StudentProfileResponse>(res);
 }
@@ -430,7 +377,7 @@ export async function getAdvisorsDirectory(): Promise<AdvisorDirectoryItem[]> {
     method: "GET",
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<AdvisorDirectoryItem[]>(res);
 }
@@ -442,7 +389,7 @@ export async function getAdvisorById(
     method: "GET",
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<AdvisorPublicDetail>(res);
 }
@@ -451,7 +398,6 @@ export async function bookAdvisorSession(
   firebaseIdToken: string,
   advisorId: string,
   selectedSlot: string,
-  selectedDate: string,
 ): Promise<{
   ok: boolean;
   advisor_email?: string;
@@ -463,12 +409,12 @@ export async function bookAdvisorSession(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
-    body: JSON.stringify({ advisor_id: advisorId, selected_slot: selectedSlot, selected_date: selectedDate }),
+    body: JSON.stringify({ advisor_id: advisorId, selected_slot: selectedSlot }),
   });
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
   return await parseJsonOrThrow<{
     ok: boolean;
@@ -482,7 +428,6 @@ export async function bookAdvisorSession(
 export async function notifyStudentSessionUpdate(
   firebaseIdToken: string,
   payload: {
-    booking_id: string;
     action: "accept" | "reject" | "change";
     student_email: string;
     student_name: string;
@@ -494,11 +439,11 @@ export async function notifyStudentSessionUpdate(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
@@ -514,11 +459,11 @@ export async function notifyAdvisorFinalSlot(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
@@ -540,11 +485,11 @@ export async function createBooking(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<BookingResponse>(res);
 }
 
@@ -552,10 +497,10 @@ export async function getMyBookings(firebaseIdToken: string): Promise<BookingRes
   const res = await fetch(url("/api/bookings/me"), {
     method: "GET",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<BookingResponse[]>(res);
 }
 
@@ -566,10 +511,10 @@ export async function getBookingById(
   const res = await fetch(url(`/api/bookings/${bookingId}`), {
     method: "GET",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<BookingResponse>(res);
 }
 
@@ -580,10 +525,10 @@ export async function joinBookingAction(
   const res = await fetch(url(`/api/bookings/${bookingId}/join`), {
     method: "PATCH",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ message: string }>(res);
 }
 
@@ -594,10 +539,10 @@ export async function reportNoShowAction(
   const res = await fetch(url(`/api/bookings/${bookingId}/report-noshow`), {
     method: "POST",
     headers: {
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean; message?: string }>(res);
 }
 
@@ -614,11 +559,11 @@ export async function uploadProfilePictureToS3(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify({ role, contentType: file.type }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   const { uploadUrl, key } = await res.json();
   const putRes = await fetch(uploadUrl, { method: "PUT", body: file });
   if (!putRes.ok) throw new Error("Could not upload profile picture to S3 storage.");
@@ -636,7 +581,7 @@ export async function uploadCollegeIdPairToS3(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: bearerToken(firebaseIdToken),
+        Authorization: `Bearer ${firebaseIdToken}`,
       },
       body: JSON.stringify({
         frontContentType: front.type,
@@ -645,7 +590,7 @@ export async function uploadCollegeIdPairToS3(
     });
 
     if (!res.ok) {
-      throw new Error(await parseErrorMessage(res));
+      throw new ApiError(await parseErrorMessage(res), res.status);
     }
 
     const { frontUploadUrl, frontKey, backUploadUrl, backKey } = await res.json();
@@ -672,9 +617,9 @@ export async function getAdvisorReferralSummary(
 ): Promise<ReferralSummaryResponse> {
   const res = await fetch(url("/api/advisors/referrals/summary"), {
     method: "GET",
-    headers: { Authorization: bearerToken(firebaseIdToken) },
+    headers: { Authorization: `Bearer ${firebaseIdToken}` },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<ReferralSummaryResponse>(res);
 }
 
@@ -686,11 +631,11 @@ export async function createAdvisorReferral(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
@@ -699,9 +644,9 @@ export async function getStudentReferralSummary(
 ): Promise<ReferralSummaryResponse> {
   const res = await fetch(url("/api/students/referrals/summary"), {
     method: "GET",
-    headers: { Authorization: bearerToken(firebaseIdToken) },
+    headers: { Authorization: `Bearer ${firebaseIdToken}` },
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<ReferralSummaryResponse>(res);
 }
 
@@ -713,11 +658,11 @@ export async function createStudentReferral(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean }>(res);
 }
 
@@ -730,11 +675,11 @@ export async function createPaymentOrder(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify({ amount, currency }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<PaymentOrderResponse>(res);
 }
 
@@ -748,7 +693,7 @@ export async function verifyPayment(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken(firebaseIdToken),
+      Authorization: `Bearer ${firebaseIdToken}`,
     },
     body: JSON.stringify({
       razorpay_order_id,
@@ -756,32 +701,15 @@ export async function verifyPayment(
       razorpay_signature,
     }),
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<PaymentVerificationResponse>(res);
 }
 
 export async function syncBookingStatus(firebaseIdToken: string, bookingId: string) {
   const res = await fetch(url(`/api/payments/sync-status/${bookingId}`), {
     method: "POST",
-    headers: { Authorization: bearerToken(firebaseIdToken) },
+    headers: { Authorization: `Bearer ${firebaseIdToken}` },
   });
+  if (!res.ok) throw new ApiError(await parseErrorMessage(res), res.status);
   return await parseJsonOrThrow<{ ok: boolean; message?: string }>(res);
-}
-
-export async function deleteMyStudentProfile(firebaseIdToken: string): Promise<{ ok: boolean; message: string }> {
-  const res = await fetch(url("/api/students/me"), {
-    method: "DELETE",
-    headers: { Authorization: bearerToken(firebaseIdToken) },
-  });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
-  return await parseJsonOrThrow<{ ok: boolean; message: string }>(res);
-}
-
-export async function deleteMyAdvisorProfile(firebaseIdToken: string): Promise<{ ok: boolean; message: string }> {
-  const res = await fetch(url("/api/advisors/me"), {
-    method: "DELETE",
-    headers: { Authorization: bearerToken(firebaseIdToken) },
-  });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
-  return await parseJsonOrThrow<{ ok: boolean; message: string }>(res);
 }

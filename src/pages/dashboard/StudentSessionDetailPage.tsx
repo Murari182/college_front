@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getAdvisorById, notifyAdvisorFinalSlot, getBookingById, joinBookingAction, reportNoShowAction, syncBookingStatus, type BookingResponse, getSessionAccessToken } from "@/lib/restApi";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { getAdvisorById, notifyAdvisorFinalSlot, getBookingById, joinBookingAction, reportNoShowAction, syncBookingStatus, type BookingResponse } from "@/lib/restApi";
 import { Calendar, Video, AlertTriangle, RefreshCw } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
 
 export default function StudentSessionDetailPage() {
-  const toast = useToast();
   const navigate = useNavigate();
   const { bookingId } = useParams({ from: "/student/session/$bookingId" });
   const [booking, setBooking] = useState<BookingResponse | null>(null);
@@ -22,8 +22,9 @@ export default function StudentSessionDetailPage() {
     let cancelled = false;
     const loadBooking = async () => {
       try {
-        const token = getSessionAccessToken();
-        if (!token) return;
+        const u = getFirebaseAuth().currentUser;
+        if (!u) return;
+        const token = await u.getIdToken(true);
         const data = await getBookingById(token, bookingId);
         if (!cancelled) {
           setBooking(data);
@@ -54,7 +55,7 @@ export default function StudentSessionDetailPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const token = getSessionAccessToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
       if (!token) {
         setMsg("Sign in required.");
         return;
@@ -76,7 +77,7 @@ export default function StudentSessionDetailPage() {
   const handleJoin = async () => {
     if (!booking?.meet_link) return;
     try {
-      const token = getSessionAccessToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
       if (token) await joinBookingAction(token, booking.id);
       window.open(booking.meet_link, "_blank");
     } catch (e) {
@@ -89,7 +90,7 @@ export default function StudentSessionDetailPage() {
     if (!booking) return;
     setBusy(true);
     try {
-      const token = getSessionAccessToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken(true);
       if (!token) return;
       const res = await reportNoShowAction(token, booking.id);
       if (res.ok) {
@@ -106,17 +107,19 @@ export default function StudentSessionDetailPage() {
 
   const handleSyncStatus = async () => {
     if (!booking) return;
-    const token = getSessionAccessToken();
-    if (!token) return;
+    const auth = getFirebaseAuth();
+    const u = auth.currentUser;
+    if (!u) return;
 
     setSyncing(true);
     try {
+      const token = await u.getIdToken(true);
       const res = await syncBookingStatus(token, booking.id);
       if (res.ok) {
-        toast.success("Payment verified! Your session is now confirmed.");
+        toast.success("Payment verified. Your session is now confirmed.");
         window.location.reload(); 
       } else {
-        toast.info(res.message || "Payment not yet received.");
+        toast.message(res.message || "Payment not yet received.");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sync failed.");

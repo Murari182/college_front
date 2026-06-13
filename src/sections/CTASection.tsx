@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { useToast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
 
 const COLLEGES_WITH_BRANCHES: Record<string, string[]> = {
@@ -34,7 +34,6 @@ const isLoggedIn = false;
 const loggedInAs: "student" | "advisor" | null = null;
 
 export default function CTASection() {
-  const toast = useToast();
   const [selectedCollege, setSelectedCollege] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [searched, setSearched] = useState(false);
@@ -59,7 +58,7 @@ export default function CTASection() {
 
   const handleSearch = () => {
     if (!selectedCollege) {
-      toast.error("Please select a college first!");
+      toast.error("Please select a college first.");
       return;
     }
     // If not logged in, show auth prompt
@@ -78,7 +77,7 @@ export default function CTASection() {
 
   const handleSendInquiry = async () => {
     if (!inquiryName || !inquiryEmail || !inquiryCollege || !inquiryBranch) {
-      toast.error("Please fill all fields!");
+      toast.error("Please fill all fields.");
       return;
     }
     setSendingInquiry(true);
